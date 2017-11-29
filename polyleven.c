@@ -41,14 +41,12 @@ static const char *matrix[] = {
 /*
  * Fastcomp algorithm
  */
-static Py_ssize_t check_model (struct strbuf *sb1, struct strbuf *sb2, Py_ssize_t k, const char *model) {
+static Py_ssize_t check_model (struct strbuf *sb1, struct strbuf *sb2, const char *model) {
 
     Py_ssize_t i = 0, j = 0, c = 0;
 
     while (i < sb1->len && j < sb2->len) {
         if (strbuf_char_at(sb1, i) != strbuf_char_at(sb2, j)) {
-            if (c >= k)
-                break;
             switch (model[c]) {
                 case 'd':
                     i++;
@@ -60,6 +58,8 @@ static Py_ssize_t check_model (struct strbuf *sb1, struct strbuf *sb2, Py_ssize_
                     i++;
                     j++;
                     break;
+                case '\0':
+                    return c + 1;
             }
             c++;
         } else {
@@ -82,7 +82,7 @@ static Py_ssize_t fastcomp (struct strbuf *sb1, struct strbuf *sb2, Py_ssize_t k
         model = matrix[row * MATRIX_COLSIZE + col];
         if (model == NULL)
             break;
-        dst = check_model(sb1, sb2, k, model);
+        dst = check_model(sb1, sb2, model);
         res = min(res, dst);
     }
 
