@@ -31,18 +31,23 @@ class TestPolyLeven(unittest.TestCase):
 
     CHARS = ('', 'a', 'b', 'c', 'd')
 
-    PATTERNS = set("".join(s) for s in product(*[CHARS]*4))
+    PATTERNS = sorted(set("".join(s) for s in product(*[CHARS]*4)))
 
     def test_unbounded(self):
         for s1, s2 in product(self.PATTERNS, self.PATTERNS):
-            self.assertEqual(levenshtein(s1, s2), wagner_fischer(s1, s2))
+            self.assertEqual(
+                levenshtein(s1, s2),
+                wagner_fischer(s1, s2),
+                "s1='%s' s2='%s'" % (s1, s2)
+            )
 
     def test_bounded(self):
         for k in range(5):
             for s1, s2 in product(self.PATTERNS, self.PATTERNS):
                 self.assertEqual(
                     levenshtein(s1, s2, k),
-                    min(wagner_fischer(s1, s2), k+1)
+                    min(wagner_fischer(s1, s2), k+1),
+                    "s1='%s' s2='%s'" % (s1, s2)
                 )
 
 if __name__ == '__main__':
