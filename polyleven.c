@@ -13,11 +13,11 @@ struct strbuf {
     Py_ssize_t len;
 };
 
-void get_strbuf (PyObject *unicode, struct strbuf *s)
+void strbuf_init(PyObject *unicode, struct strbuf *sb)
 {
-    s->data = PyUnicode_DATA(unicode);
-    s->kind = PyUnicode_KIND(unicode);
-    s->len = PyUnicode_GET_LENGTH(unicode);
+    sb->data = PyUnicode_DATA(unicode);
+    sb->kind = PyUnicode_KIND(unicode);
+    sb->len = PyUnicode_GET_LENGTH(unicode);
 }
 
 #define strbuf_char_at(sb,idx) (PyUnicode_READ(sb->kind, sb->data, idx))
@@ -241,8 +241,8 @@ static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "UU|n", &u1, &u2, &k))
         return NULL;
 
-    get_strbuf(u1, &sb1);
-    get_strbuf(u2, &sb2);
+    strbuf_init(u1, &sb1);
+    strbuf_init(u2, &sb2);
 
     if (sb1.len - sb2.len < 0) {
         tmp = sb1;
