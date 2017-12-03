@@ -32,7 +32,7 @@ Py_ssize_t strbuf_find(struct strbuf *sb, Py_UCS4 chr, Py_ssize_t start) {
 }
 
 /*
- * The model table for fastcomp algorithm.
+ * The model table for mbleven algorithm.
  */
 static const char *matrix[] = {
       "r",  NULL,  NULL,  NULL,  NULL,  NULL,  NULL, // 1
@@ -51,7 +51,7 @@ static const int matrix_row_index[3] = { 0, 2, 5 };
 #define MATRIX_COLSIZE 7
 
 /*
- * Fastcomp algorithm
+ * mbleven algorithm
  */
 static Py_ssize_t check_model(struct strbuf *sb1, struct strbuf *sb2, const char *model) {
 
@@ -82,7 +82,7 @@ static Py_ssize_t check_model(struct strbuf *sb1, struct strbuf *sb2, const char
     return c + (sb1->len - i) + (sb2->len - j);
 }
 
-static Py_ssize_t fastcomp(struct strbuf *sb1, struct strbuf *sb2, Py_ssize_t k)
+static Py_ssize_t mbleven(struct strbuf *sb1, struct strbuf *sb2, Py_ssize_t k)
 {
     const char *model;
     int row, col;
@@ -258,7 +258,7 @@ static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
     if (k == 0) {
         res = PyUnicode_Compare(u1, u2) ? 1 : 0;
     } else if (0 < k && k <= 3) {
-        res = fastcomp(&sb1, &sb2, k);
+        res = mbleven(&sb1, &sb2, k);
     } else {
         res = wagner_fischer(&sb1, &sb2);
     }
