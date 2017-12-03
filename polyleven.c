@@ -1,8 +1,8 @@
 #include <Python.h>
 #include <string.h>
 
-#define min(a,b) ((a) < (b) ? (a) : (b))
-#define max(a,b) ((a) > (b) ? (a) : (b))
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
+#define MAX(a,b) ((a) > (b) ? (a) : (b))
 
 /*
  * Basic data structure for handling Unicode objects
@@ -20,12 +20,12 @@ void strbuf_init(PyObject *unicode, struct strbuf *sb)
     sb->len = PyUnicode_GET_LENGTH(unicode);
 }
 
-#define strbuf_char_at(sb,idx) (PyUnicode_READ(sb->kind, sb->data, idx))
+#define STRBUF_READ(sb,idx) (PyUnicode_READ((sb)->kind, (sb)->data, (idx)))
 
 Py_ssize_t strbuf_find(struct strbuf *sb, Py_UCS4 chr, Py_ssize_t start) {
     Py_ssize_t idx;
     for (idx = start; idx < sb->len; idx++) {
-        if (strbuf_char_at(sb, idx) == chr)
+        if (STRBUF_READ(sb, idx) == chr)
             return idx;
     }
     return -1;
@@ -56,7 +56,7 @@ static Py_ssize_t check_model (struct strbuf *sb1, struct strbuf *sb2, const cha
     Py_ssize_t i = 0, j = 0, c = 0;
 
     while (i < sb1->len && j < sb2->len) {
-        if (strbuf_char_at(sb1, i) != strbuf_char_at(sb2, j)) {
+        if (STRBUF_READ(sb1, i) != STRBUF_READ(sb2, j)) {
             switch (model[c]) {
                 case 'd':
                     i++;
@@ -93,7 +93,7 @@ static Py_ssize_t fastcomp (struct strbuf *sb1, struct strbuf *sb2, Py_ssize_t k
         if (model == NULL)
             break;
         dst = check_model(sb1, sb2, model);
-        res = min(res, dst);
+        res = MIN(res, dst);
     }
 
     return res;
@@ -104,7 +104,7 @@ static Py_ssize_t fastcomp (struct strbuf *sb1, struct strbuf *sb2, Py_ssize_t k
  */
 static Py_ssize_t wagner_fischer_L1 (struct strbuf *sb1, struct strbuf *sb2)
 {
-    Py_UCS4 c0 = strbuf_char_at(sb2, 0);
+    Py_UCS4 c0 = STRBUF_READ(sb2, 0);
     Py_ssize_t i0 = strbuf_find(sb1, c0, 0);
     return sb1->len - (i0 > -1);
 }
@@ -117,8 +117,8 @@ static Py_ssize_t wagner_fischer_L2 (struct strbuf *sb1, struct strbuf *sb2)
     Py_UCS4 c0, c1;
     Py_ssize_t i0, i1;
 
-    c0 = strbuf_char_at(sb2, 0);
-    c1 = strbuf_char_at(sb2, 1);
+    c0 = STRBUF_READ(sb2, 0);
+    c1 = STRBUF_READ(sb2, 1);
 
     i0 = strbuf_find(sb1, c0, 0);
 
@@ -169,14 +169,14 @@ static Py_ssize_t wagner_fischer_with_cutoff (struct strbuf *sb1, struct strbuf 
 
     for (i = 1; i <= sb1->len; i++) {
         arr[0] = i - 1;
-        chr = strbuf_char_at(sb1, i - 1);
+        chr = STRBUF_READ(sb1, i - 1);
 
-        start = max(1, i - lpad);
+        start = MAX(1, i - lpad);
         dia = arr[start - 1];
         top = arr[start];
 
-        if (chr != strbuf_char_at(sb2, start - 1)) {
-            dia = min(dia, top);
+        if (chr != STRBUF_READ(sb2, start - 1)) {
+            dia = MIN(dia, top);
             dia++;
         }
         arr[start] = dia;
@@ -194,9 +194,9 @@ static Py_ssize_t wagner_fischer_with_cutoff (struct strbuf *sb1, struct strbuf 
         for (j = start + 1; j <= end; j++) {
             top = arr[j];
 
-            if (chr != strbuf_char_at(sb2, j - 1)) {
-                dia = min(dia, top);
-                dia = min(dia, left);
+            if (chr != STRBUF_READ(sb2, j - 1)) {
+                dia = MIN(dia, top);
+                dia = MIN(dia, left);
                 dia++;
             }
             arr[j] = dia;
@@ -207,8 +207,8 @@ static Py_ssize_t wagner_fischer_with_cutoff (struct strbuf *sb1, struct strbuf 
         if (sb2->len < i + rpad)
             continue;
 
-        if (chr != strbuf_char_at(sb2, end)) {
-            dia = min(dia, left);
+        if (chr != STRBUF_READ(sb2, end)) {
+            dia = MIN(dia, left);
             dia++;
         }
         arr[end + 1] = dia;
