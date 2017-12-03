@@ -46,6 +46,8 @@ static const char *matrix[] = {
     "ddd",  NULL,  NULL,  NULL,  NULL,  NULL,  NULL,
 };
 
+static const int matrix_row_index[3] = { 0, 2, 5 };
+
 #define MATRIX_COLSIZE 7
 
 /*
@@ -87,7 +89,7 @@ static Py_ssize_t fastcomp (struct strbuf *sb1, struct strbuf *sb2, Py_ssize_t k
     Py_ssize_t res = k + 1;
     Py_ssize_t dst;
 
-    row = k * (k + 1) / 2  - 1 + (sb1->len - sb2->len);
+    row = matrix_row_index[k - 1] + (sb1->len - sb2->len);
     for (col = 0; col < MATRIX_COLSIZE; col++) {
         model = matrix[row * MATRIX_COLSIZE + col];
         if (model == NULL)
