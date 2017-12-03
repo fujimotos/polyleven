@@ -53,7 +53,7 @@ static const int matrix_row_index[3] = { 0, 2, 5 };
 /*
  * Fastcomp algorithm
  */
-static Py_ssize_t check_model (struct strbuf *sb1, struct strbuf *sb2, const char *model) {
+static Py_ssize_t check_model(struct strbuf *sb1, struct strbuf *sb2, const char *model) {
 
     Py_ssize_t i = 0, j = 0, c = 0;
 
@@ -82,7 +82,7 @@ static Py_ssize_t check_model (struct strbuf *sb1, struct strbuf *sb2, const cha
     return c + (sb1->len - i) + (sb2->len - j);
 }
 
-static Py_ssize_t fastcomp (struct strbuf *sb1, struct strbuf *sb2, Py_ssize_t k)
+static Py_ssize_t fastcomp(struct strbuf *sb1, struct strbuf *sb2, Py_ssize_t k)
 {
     const char *model;
     int row, col;
@@ -104,7 +104,7 @@ static Py_ssize_t fastcomp (struct strbuf *sb1, struct strbuf *sb2, Py_ssize_t k
 /*
  * WF1: Optimized for where sb2->len == 1;
  */
-static Py_ssize_t wagner_fischer_L1 (struct strbuf *sb1, struct strbuf *sb2)
+static Py_ssize_t wagner_fischer_L1(struct strbuf *sb1, struct strbuf *sb2)
 {
     Py_UCS4 c0 = STRBUF_READ(sb2, 0);
     Py_ssize_t i0 = strbuf_find(sb1, c0, 0);
@@ -114,7 +114,7 @@ static Py_ssize_t wagner_fischer_L1 (struct strbuf *sb1, struct strbuf *sb2)
 /*
  * WF2: Optimized for where sb2->len == 2;
  */
-static Py_ssize_t wagner_fischer_L2 (struct strbuf *sb1, struct strbuf *sb2)
+static Py_ssize_t wagner_fischer_L2(struct strbuf *sb1, struct strbuf *sb2)
 {
     Py_UCS4 c0, c1;
     Py_ssize_t i0, i1;
@@ -152,7 +152,7 @@ static Py_ssize_t wagner_fischer_L2 (struct strbuf *sb1, struct strbuf *sb2)
  * Note that this optimization does not work when sb2->len <= 2.
  * Use wagner_fischer_L* instead for such cases.
  */
-static Py_ssize_t wagner_fischer_with_cutoff (struct strbuf *sb1, struct strbuf *sb2)
+static Py_ssize_t wagner_fischer_with_cutoff(struct strbuf *sb1, struct strbuf *sb2)
 {
     Py_ssize_t i, j, rpad, lpad;
     Py_ssize_t start, end, top, left, dia;
