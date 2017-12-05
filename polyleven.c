@@ -1,5 +1,4 @@
 #include <Python.h>
-#include <string.h>
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
@@ -22,7 +21,8 @@ void strbuf_init(PyObject *unicode, struct strbuf *sb)
 
 #define STRBUF_READ(sb,idx) (PyUnicode_READ((sb)->kind, (sb)->data, (idx)))
 
-Py_ssize_t strbuf_find(struct strbuf *sb, Py_UCS4 chr, Py_ssize_t start) {
+Py_ssize_t strbuf_find(struct strbuf *sb, Py_UCS4 chr, Py_ssize_t start)
+{
     Py_ssize_t idx;
     for (idx = start; idx < sb->len; idx++) {
         if (STRBUF_READ(sb, idx) == chr)
@@ -53,8 +53,8 @@ static const int matrix_row_index[3] = { 0, 2, 5 };
 /*
  * mbleven algorithm
  */
-static Py_ssize_t check_model(struct strbuf *sb1, struct strbuf *sb2, const char *model) {
-
+static Py_ssize_t check_model(struct strbuf *sb1, struct strbuf *sb2, const char *model)
+{
     Py_ssize_t i = 0, j = 0, c = 0;
 
     while (i < sb1->len && j < sb2->len) {
@@ -220,7 +220,8 @@ static Py_ssize_t wagner_fischer_with_cutoff(struct strbuf *sb1, struct strbuf *
     return dia;
 }
 
-static Py_ssize_t wagner_fischer(struct strbuf *sb1, struct strbuf *sb2) {
+static Py_ssize_t wagner_fischer(struct strbuf *sb1, struct strbuf *sb2)
+{
     if (!sb2->len)
         return sb1->len;
     if (sb2->len == 1)
