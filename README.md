@@ -1,21 +1,27 @@
 polyleven
 =========
 
-polyleven is yet another libary to compute Levenshtein distance.
+The purpose of polyleven is to provide a Python module that:
 
- * Requires Python 3.3 or later (Python 2.X is not supported)
+ * Can compute Levenshtein distance between two strings through
+   a sensible interface.
+
+ * Performs computations with the efficiency comparable to the
+   best currently available Python libraries.
+
+ * Is distributed with a permissive license like MIT/X, and hence
+   is easy to embed into other programs.
 
 Installation
 ------------
 
-Clone this repository:
+Clone this repository and run setup.py:
 
     $ git clone https://github.com/fujimotos/polyleven
     $ cd polyleven
-
-Run setup.py:
-
     $ sudo python3 setup.py install
+
+As of v0.1, polyleven supports Python 3.4 or later.
 
 Usage
 -----
@@ -26,14 +32,9 @@ Here is the basic usage:
     >>> levenshtein("house", "noise")
     2
 
-Also you can pass a maximum distance to compute as the third argument:
+You can pass a distance to compute as the third argument:
 
     >>> levenshtein("house", "noise", 2)
     2
     >>> levenshtein("house", "note", 2)
     3
-
-Benchmarks
-----------
-
-...
