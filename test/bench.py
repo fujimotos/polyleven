@@ -23,6 +23,7 @@ if __name__ == '__main__':
     import os.path
     import sys
     import random
+    import platform
 
     basedir = os.path.dirname(sys.argv[0])
     path = os.path.join(basedir, 'words_english.txt')
@@ -34,6 +35,10 @@ if __name__ == '__main__':
     def bench(name, func, args=None):
         return do_bench(words, sample, name, func, args)
 
+    uname = platform.uname()
+    pyver = platform.python_version()
+
+    print('System: Python %s on %s (%s)' % (pyver, uname.system, uname.machine))
     print('Words :', len(words))
     print('Sample:', len(sample))
     print('Total : %s calls\n' % (len(words) * len(sample)))
