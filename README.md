@@ -35,17 +35,17 @@ from polyleven import levenshtein
 dist = levenshtein('abcde', 'abcd')
 print(dist)  # 1
 
-# If you have no interest in computing distance more than
-# a certain threshold `k`, you can speed things up by
-# passing the value as the third argument.
+# If you have no interest in distances more than a certain
+# threshold `k`, you can speed things up by passing the
+# threshold value as the third argument.
 #
-# For example, you can archive 2x throughput by setting the
-# threshold parameter to two.
+# For example, you can archive ~2x throughput by setting
+# the threshold parameter to two.
 dist = levenshtein('abcde', 'abc', 2)
 print(dist)  # 2
 
 # In this case, the function will return (k + 1) when the
-# input strings are more than `k` distance away.
+# distance between the input strings exceeds the threshold.
 dist = levenshtein('abcde', '', 2)
 print(dist)  # 3
 ```
