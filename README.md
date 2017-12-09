@@ -11,6 +11,52 @@ Polyleven is a C-implented Python library that:
  * Is distributed under a permissive license like MIT/X, and hence
    is easy to embed into other programs.
 
+Benchmark
+---------
+
+To evaluate 6 edit-distance libraries found on PyPI and Github, I used
+a large English dictionary with 99,717 words (which is retrieved from
+Debian's `wamerican` package).
+
+With randomly chosen 10 entries, each library was used to compute the
+edit distance with every word in the dictionary. The execution time
+was measured using the `time` module in the Python standard library.
+
+The system used for this benchmark was:
+
+* Intel Core i3-4010U (1.70GHz)
+* Linux (Debian Stretch)
+* Python 3.5.3 / GCC 6.3.0
+
+### Result
+
+ Test target                     |  TIME[sec]  |  SPEED[calls/s]
+-------------------------------- | ----------- | ----------------
+`edlib.align`                    |   4.351     |      227,937
+`editdistance.eval`              |   1.893     |      523,802
+`jellyfish.levenshtein_distance` |   0.757     |    1,309,227
+`distance.levenshtein`           |   0.601     |    1,651,095
+`polyleven.levenshtein`          |   0.516     |    1,920,087
+`Levenshtein.distance`           |   0.470     |    2,108,491
+
+Also, by setting a maximum threshold to compute, polyleven can perform
+1.6-2.1x more computations than the fastest general libraries:
+
+ Test target                     |  TIME[sec]  |  SPEED[calls/s]
+-------------------------------- | ----------- | ----------------
+`polyleven.levenshtein` (k=3)    |   0.290     |    3,415,349
+`polyleven.levenshtein` (k=2)    |   0.244     |    4,063,028
+`polyleven.levenshtein` (k=1)    |   0.228     |    4,349,852
+
+
+### List of libraries in this benchmark
+
+* edlib (1.2.1) https://github.com/Martinsos/edlib
+* editdistance (0.4) https://github.com/aflc/editdistance
+* jellyfish (0.5.6) https://github.com/jamesturk/jellyfish
+* distance (0.1.3) https://github.com/doukremt/distance
+* Python-Levenshtein (0.12) https://github.com/ztane/python-Levenshtein/
+
 Installation
 ------------
 
