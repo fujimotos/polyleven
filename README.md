@@ -14,18 +14,18 @@ Polyleven is a C-implented Python library that:
 Benchmark
 ---------
 
-To evaluate 6 edit-distance libraries found on PyPI and Github, I used
+To evaluate edit-distance libraries found on PyPI and Github, I used
 a large English dictionary with 99,717 words (which is retrieved from
 Debian's `wamerican` package).
 
-With randomly chosen 10 entries, each library was used to compute the
-edit distance with every word in the dictionary. The execution time
+With randomly chosen 10 input words, each library was used to compute
+the edit distance with every word in the dictionary. The execution time
 was measured using the `time` module in the Python standard library.
 
 The system used for this benchmark was:
 
 * Intel Core i3-4010U (1.70GHz)
-* Linux (Debian Stretch)
+* Linux x86-64 (Debian Stretch)
 * Python 3.5.3 / GCC 6.3.0
 
 ### Result
@@ -48,6 +48,8 @@ Also, by setting a maximum threshold to compute, polyleven can perform
 `polyleven.levenshtein` (k=2)    |   0.244     |    4,063,028
 `polyleven.levenshtein` (k=1)    |   0.228     |    4,349,852
 
+The script and data set used for this benchmark is available in the
+"test/" directory.
 
 ### List of libraries in this benchmark
 
