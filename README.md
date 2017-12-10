@@ -5,11 +5,22 @@ Polyleven is a C-implented Python library that:
 
  * Can compute Levenshtein distance between two strings.
 
- * Performs computations with the efficiency comparable to the
-   best currently available Python libraries.
+ * Has the efficiency comparable to the best currently available
+   Python libraries.
 
- * Is distributed under a permissive license like MIT/X, and hence
+ * Is distributed under a permissive license (MIT License), and hence
    is easy to embed into other programs.
+
+How to install
+--------------
+
+Clone this repository and run setup.py:
+
+    $ git clone https://github.com/fujimotos/polyleven
+    $ cd polyleven
+    $ sudo python3 setup.py install
+
+As of v0.1, polyleven supports Python 3.4 or later.
 
 Benchmark
 ---------
@@ -30,26 +41,26 @@ The system used for this benchmark was:
 
 ### Result
 
- Test target                     |  TIME[sec]  |  SPEED[calls/s]
--------------------------------- | ----------- | ----------------
-`edlib.align`                    |   4.351     |      227,937
-`editdistance.eval`              |   1.893     |      523,802
-`jellyfish.levenshtein_distance` |   0.757     |    1,309,227
-`distance.levenshtein`           |   0.601     |    1,651,095
-`polyleven.levenshtein`          |   0.516     |    1,920,087
-`Levenshtein.distance`           |   0.470     |    2,108,491
+ Test target                    |  TIME[sec]  |  SPEED[calls/s]
+------------------------------- | ----------- | ----------------
+edlib.align                     |   4.351     |      227,937
+editdistance.eval               |   1.893     |      523,802
+jellyfish.levenshtein\_distance |   0.757     |    1,309,227
+distance.levenshtein            |   0.601     |    1,651,095
+polyleven.levenshtein           |   0.516     |    1,920,087
+Levenshtein.distance            |   0.470     |    2,108,491
 
-Also, by setting a maximum threshold to compute, polyleven can perform
-1.6-2.1x more computations than the fastest general libraries:
+Also, by setting a maximum threshold to compute, polyleven becomes
+1.6-2.1x faster than the fastest general functions:
 
- Test target                     |  TIME[sec]  |  SPEED[calls/s]
--------------------------------- | ----------- | ----------------
-`polyleven.levenshtein` (k=3)    |   0.290     |    3,415,349
-`polyleven.levenshtein` (k=2)    |   0.244     |    4,063,028
-`polyleven.levenshtein` (k=1)    |   0.228     |    4,349,852
+ Test target                    |  TIME[sec]  |  SPEED[calls/s]
+------------------------------- | ----------- | ----------------
+polyleven.levenshtein (k=3)     |   0.290     |    3,415,349
+polyleven.levenshtein (k=2)     |   0.244     |    4,063,028
+polyleven.levenshtein (k=1)     |   0.228     |    4,349,852
 
 The script and data set used for this benchmark is available in the
-"test/" directory.
+`test` directory.
 
 ### List of libraries in this benchmark
 
@@ -57,18 +68,8 @@ The script and data set used for this benchmark is available in the
 * editdistance (0.4) https://github.com/aflc/editdistance
 * jellyfish (0.5.6) https://github.com/jamesturk/jellyfish
 * distance (0.1.3) https://github.com/doukremt/distance
+* polyleven (0.1) https://github.com/fujimotos/polyleven
 * Python-Levenshtein (0.12) https://github.com/ztane/python-Levenshtein/
-
-Installation
-------------
-
-Clone this repository and run setup.py:
-
-    $ git clone https://github.com/fujimotos/polyleven
-    $ cd polyleven
-    $ sudo python3 setup.py install
-
-As of v0.1, polyleven supports Python 3.4 or later.
 
 How to use polyleven
 --------------------
