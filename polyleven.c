@@ -160,8 +160,10 @@ static Py_ssize_t wagner_fischer_with_cutoff(struct strbuf *sb1, struct strbuf *
     Py_UCS4 chr;
 
     arr = malloc((sb2->len + 1) * sizeof(Py_ssize_t));
-    if (arr == NULL)
+    if (arr == NULL) {
+        PyErr_NoMemory();
         return -1;
+    }
 
     rpad = (sb2->len - 1) / 2;
     lpad = rpad + (sb1->len - sb2->len);
