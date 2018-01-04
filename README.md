@@ -5,11 +5,11 @@ Polyleven is a C-implented Python library that:
 
  * Can compute Levenshtein distance between two strings.
 
- * Has the efficiency comparable to the best currently available
-   Python libraries.
+ * Has the efficiency comparable to the best currently available Python
+   libraries.
 
- * Is distributed under a permissive license (MIT License), and hence
-   is easy to embed into other programs.
+ * Is freely distributed (see LICENSE) and hence is easy to embed into
+   other programs.
 
 How to install
 --------------
