@@ -1,9 +1,21 @@
-from distutils.core import setup, Extension
+import setuptools
 
-setup(
-    name = 'polyleven',
-    version = '0.1',
-    ext_modules = [
-        Extension('polyleven', sources=['polyleven.c'])
-    ]
+setuptools.setup(
+    name='polyleven',
+    version='0.2',
+    author='Fujimoto Seiji',
+    author_email='fujimoto@ceptord.net',
+    description='A fast C-implemented library for Levenshtein distance',
+    url='https://github.com/fujimotos/polyleven',
+    ext_modules=[
+        setuptools.Extension('polyleven', sources=['polyleven.c'])
+    ],
+    python_requires='>=3.4',
+    classifiers=(
+        'Development Status :: 4 - Beta',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: C',
+        'License :: Public Domain',
+    )
 )
