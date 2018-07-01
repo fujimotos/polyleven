@@ -18,9 +18,34 @@ Clone this repository and run setup.py:
 
     $ git clone https://github.com/fujimotos/polyleven
     $ cd polyleven
-    $ sudo python3 setup.py install
+    $ python3 setup.py install
 
 As of v0.1, polyleven supports Python 3.4 or later.
+
+Usage
+-----
+
+Polyleven provides a function `levenshtein()`, which computes the edit
+distance between a pair of strings.
+
+```python
+>>> from polyleven import levenshtein
+>>> levenshtein('abcde', 'abcd')
+1
+```
+
+If you only need to compute k-or-fewer differences, you can speed up
+things a lot by passing k as the third argument:
+
+```python
+>>> dist = levenshtein('abcde', 'abc', 2)
+2
+>>> dist = levenshtein('abcde', 'xxxxx', 2)
+3
+```
+
+As you can see, `levenshtein()` returns (k + 1) when the distance
+exceeds the given threshold k.
 
 Benchmark
 ---------
@@ -70,31 +95,3 @@ The script and data set used for this benchmark is available in the
 * distance (0.1.3) https://github.com/doukremt/distance
 * polyleven (0.1) https://github.com/fujimotos/polyleven
 * Python-Levenshtein (0.12) https://github.com/ztane/python-Levenshtein/
-
-How to use polyleven
---------------------
-
-Here is an example to use the polyleven module:
-
-```python
-from polyleven import levenshtein
-
-# Just call `levenshtein()` function to compute the edit
-# distance between two strings.
-dist = levenshtein('abcde', 'abcd')
-print(dist)  # 1
-
-# If you have no interest in distances more than a certain
-# threshold `k`, you can speed things up by passing the
-# threshold value as the third argument.
-#
-# For example, you can archive ~2x throughput by setting
-# the threshold parameter to two.
-dist = levenshtein('abcde', 'abc', 2)
-print(dist)  # 2
-
-# In this case, the function will return (k + 1) when the
-# distance between the input strings exceeds the threshold.
-dist = levenshtein('abcde', '', 2)
-print(dist)  # 3
-```
