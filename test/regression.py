@@ -29,7 +29,7 @@ def wagner_fischer(s, t):
 
 class TestPolyLeven(unittest.TestCase):
 
-    CHARS = ('', 'a', 'b', 'c', 'd')
+    CHARS = ('', 'a', 'b', 'c')
 
     PATTERNS = sorted(set("".join(s) for s in product(*[CHARS]*4)))
 
