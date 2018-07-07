@@ -1,32 +1,33 @@
 polyleven
 =========
 
-Polyleven is a C-implented Python library that:
+Polyleven is a C-implemented Python library that can compute Levenshtein
+distance between two strings efficiently.
 
- * Can compute Levenshtein distance between two strings.
+Requirements
+------------
 
- * Has the efficiency comparable to the best currently available Python
-   libraries.
-
- * Is freely distributed (see LICENSE) and hence is easy to embed into
-   other programs.
+ - Python 3.4 or later
+ - C compiler (e.g. GCC)
 
 How to install
 --------------
 
-Clone this repository and run setup.py:
+Install via pip:
+
+    $ pip install git+https://github.com/fujimotos/polyleven
+
+Or clone this repository and run setup.py:
 
     $ git clone https://github.com/fujimotos/polyleven
     $ cd polyleven
     $ python3 setup.py install
 
-As of v0.1, polyleven supports Python 3.4 or later.
-
 Usage
 -----
 
-Polyleven provides a function `levenshtein()`, which computes the edit
-distance between a pair of strings.
+Polyleven provides a function `levenshtein()` that computes the edit
+distance between the input strings:
 
 ```python
 >>> from polyleven import levenshtein
@@ -34,8 +35,9 @@ distance between a pair of strings.
 1
 ```
 
-If you only need to compute k-or-fewer differences, you can speed up
-things a lot by passing k as the third argument:
+This function takes an (optional) third parameter, with which you can
+specify the upper bound of distance to compute. This can reduce the
+computational time significantly (see Benchmark below).
 
 ```python
 >>> dist = levenshtein('abcde', 'abc', 2)
@@ -44,14 +46,11 @@ things a lot by passing k as the third argument:
 3
 ```
 
-As you can see, `levenshtein()` returns (k + 1) when the distance
-exceeds the given threshold k.
-
 Benchmark
 ---------
 
-To evaluate edit-distance libraries found on PyPI and Github, I used
-a large English dictionary with 99,717 words (which is retrieved from
+To evaluate edit-distance libraries found on PyPI and GitHub, I used
+an English dictionary with 99,717 words (which is retrieved from
 Debian's `wamerican` package).
 
 With randomly chosen 10 input words, each library was used to compute
@@ -87,7 +86,7 @@ polyleven.levenshtein (k=1)     |   0.228     |    4,349,852
 The script and data set used for this benchmark is available in the
 `test` directory.
 
-### List of libraries in this benchmark
+### The list of libraries
 
 * edlib (1.2.1) https://github.com/Martinsos/edlib
 * editdistance (0.4) https://github.com/aflc/editdistance
