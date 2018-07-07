@@ -42,7 +42,7 @@ if __name__ == '__main__':
     import platform
 
     basedir = os.path.dirname(sys.argv[0])
-    path = os.path.join(basedir, 'words_english.txt')
+    path = os.path.join(basedir, 'data/words.txt')
 
     with open(path) as fp:
         words = [x.strip() for x in fp]
