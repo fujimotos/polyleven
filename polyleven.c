@@ -1,7 +1,11 @@
 #include <Python.h>
+#include <stdint.h>
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
+
+#define BITMAP_GET(bm,i) (bm[i / 64] & (1 << (i % 64)))
+#define BITMAP_SET(bm,i) (bm[i / 64] |= (1 << (i % 64)))
 
 /*
  * Basic data structure for handling Unicode objects
@@ -134,7 +138,7 @@ static Py_ssize_t wagner_fischer_L2(struct strbuf *sb1, struct strbuf *sb2)
 }
 
 /*
- * An optimized implementation of Wagener-Fischer.
+ * An optimized implementation of Wagner-Fischer.
  *
  * The basic idea behind this routine is to avoid filling cells which
  * never produces a sensible edit path; For example, if sb1='abcd' and
@@ -234,6 +238,65 @@ static Py_ssize_t wagner_fischer(struct strbuf *sb1, struct strbuf *sb2)
 }
 
 /*
+ * Myers bit-parallel algorithm
+ *
+ * See:
+ *   G. Myers. "A fast bit-vector algorithm for approximate string
+ *   matching based on dynamic programming." Journal of the ACM, 1999.
+ */
+static uint64_t bitmap_eq(char chr, char *str, uint64_t len)
+{
+    uint64_t res = 0;
+    uint64_t idx;
+    for (idx = 0; idx < len; idx++) {
+        if (chr == str[idx])
+            res |= 1 << idx;
+    }
+    return res;
+}
+
+static uint64_t myers1999(char *text, uint64_t len, char *pat, uint64_t patlen)
+{
+    uint64_t bitmap[4] = {0, 0, 0, 0};
+    uint64_t idx;
+    unsigned char chr;
+    uint64_t Peq[256];
+    uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv, Score, Last;
+
+    Mv = 0;
+    Pv = ~0;
+    Score = patlen;
+    Last = 1 << (patlen - 1);
+
+    for (idx = 0; idx < len; idx++) {
+        chr = text[idx];
+        if (!BITMAP_GET(bitmap, chr)) {
+            BITMAP_SET(bitmap, chr);
+            Peq[chr] = bitmap_eq(chr, pat, patlen);
+        }
+        Eq = Peq[chr];
+
+        Xv = Eq | Mv;
+        Xh = (((Eq & Pv) + Pv) ^ Pv) | Eq;
+
+        Ph = Mv | ~ (Xh | Pv);
+        Mh = Pv & Xh;
+
+        if (Ph & Last)
+            Score += 1;
+        if (Mh & Last)
+            Score -= 1;
+
+        Ph = (Ph << 1) | 1;
+        Mh = (Mh << 1);
+
+        Pv = Mh | ~ (Xv | Ph);
+        Mv = Ph & Xv;
+    }
+    return Score;
+}
+
+/*
  * Interface function
  */
 static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
@@ -249,7 +312,7 @@ static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
     strbuf_init(u1, &sb1);
     strbuf_init(u2, &sb2);
 
-    if (sb1.len - sb2.len < 0) {
+    if (sb1.len < sb2.len) {
         tmp = sb1;
         sb1 = sb2;
         sb2 = tmp;
@@ -262,6 +325,8 @@ static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
         res = PyUnicode_Compare(u1, u2) ? 1 : 0;
     } else if (0 < k && k <= 3) {
         res = mbleven(&sb1, &sb2, k);
+    } else if (2 < sb2.len && sb2.len <= 64 && sb1.kind == 1 && sb2.kind == 1) {
+        res = myers1999(sb1.data, sb1.len, sb2.data, sb2.len);
     } else {
         res = wagner_fischer(&sb1, &sb2);
     }
