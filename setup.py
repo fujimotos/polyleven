@@ -10,6 +10,7 @@ setuptools.setup(
     ext_modules=[
         setuptools.Extension('polyleven', sources=['polyleven.c'])
     ],
+    zip_safe=False,
     python_requires='>=3.4',
     classifiers=(
         'Development Status :: 4 - Beta',
