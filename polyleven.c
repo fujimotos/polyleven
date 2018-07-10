@@ -4,8 +4,8 @@
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
-#define BITMAP_GET(bm,i) (bm[i / 64] & (1 << (i % 64)))
-#define BITMAP_SET(bm,i) (bm[i / 64] |= (1 << (i % 64)))
+#define BITMAP_GET(bm,i) (bm[i / 64] & ((uint64_t) 1 << (i % 64)))
+#define BITMAP_SET(bm,i) (bm[i / 64] |= ((uint64_t) 1 << (i % 64)))
 
 /*
  * Basic data structure for handling Unicode objects
@@ -250,7 +250,7 @@ static uint64_t bitmap_eq(char chr, char *str, uint64_t len)
     uint64_t idx;
     for (idx = 0; idx < len; idx++) {
         if (chr == str[idx])
-            res |= 1 << idx;
+            res |= (uint64_t) 1 << idx;
     }
     return res;
 }
@@ -264,9 +264,9 @@ static uint64_t myers1999(char *text, uint64_t len, char *pat, uint64_t patlen)
     uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv, Score, Last;
 
     Mv = 0;
-    Pv = ~0;
+    Pv = ~ (uint64_t) 0;
     Score = patlen;
-    Last = 1 << (patlen - 1);
+    Last = (uint64_t) 1 << (patlen - 1);
 
     for (idx = 0; idx < len; idx++) {
         chr = text[idx];
