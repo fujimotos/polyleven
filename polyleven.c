@@ -12,11 +12,11 @@
  */
 struct strbuf {
     void *data;
-    Py_ssize_t kind;
+    int kind;
     Py_ssize_t len;
 };
 
-void strbuf_init(PyObject *unicode, struct strbuf *sb)
+static void strbuf_init(PyObject *unicode, struct strbuf *sb)
 {
     sb->data = PyUnicode_DATA(unicode);
     sb->kind = PyUnicode_KIND(unicode);
@@ -25,7 +25,7 @@ void strbuf_init(PyObject *unicode, struct strbuf *sb)
 
 #define STRBUF_READ(sb,idx) (PyUnicode_READ((sb)->kind, (sb)->data, (idx)))
 
-Py_ssize_t strbuf_find(struct strbuf *sb, Py_UCS4 chr, Py_ssize_t start)
+static Py_ssize_t strbuf_find(struct strbuf *sb, Py_UCS4 chr, Py_ssize_t start)
 {
     Py_ssize_t idx;
     for (idx = start; idx < sb->len; idx++) {
