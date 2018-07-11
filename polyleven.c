@@ -160,18 +160,11 @@ static Py_ssize_t wagner_fischer_L2(struct strbuf *sb1, struct strbuf *sb2)
  * Note that this optimization does not work when sb2->len <= 2.
  * Use wagner_fischer_L* instead for such cases.
  */
-static Py_ssize_t wagner_fischer_with_cutoff(struct strbuf *sb1, struct strbuf *sb2)
+static Py_ssize_t wagner_fischer_with_cutoff(struct strbuf *sb1, struct strbuf *sb2, Py_ssize_t *arr)
 {
     Py_ssize_t i, j, rpad, lpad;
     Py_ssize_t start, end, top, left, dia;
-    Py_ssize_t *arr;
     Py_UCS4 chr;
-
-    arr = malloc((sb2->len + 1) * sizeof(Py_ssize_t));
-    if (arr == NULL) {
-        PyErr_NoMemory();
-        return -1;
-    }
 
     rpad = (sb2->len - 1) / 2;
     lpad = rpad + (sb1->len - sb2->len);
@@ -226,19 +219,31 @@ static Py_ssize_t wagner_fischer_with_cutoff(struct strbuf *sb1, struct strbuf *
         arr[end + 1] = dia;
     }
     dia = arr[sb2->len];
-    free(arr);
     return dia;
 }
 
 static Py_ssize_t wagner_fischer(struct strbuf *sb1, struct strbuf *sb2)
 {
+    Py_ssize_t *arr;
+    Py_ssize_t res;
+
     if (!sb2->len)
         return sb1->len;
     if (sb2->len == 1)
         return wagner_fischer_L1(sb1, sb2);
     if (sb2->len == 2)
         return wagner_fischer_L2(sb1, sb2);
-    return wagner_fischer_with_cutoff(sb1, sb2);
+
+    arr = malloc((sb2->len + 1) * sizeof(Py_ssize_t));
+    if (arr == NULL) {
+        PyErr_NoMemory();
+        return -1;
+    }
+
+    res = wagner_fischer_with_cutoff(sb1, sb2, arr);
+    free(arr);
+
+    return res;
 }
 
 
