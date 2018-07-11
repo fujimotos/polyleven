@@ -4,8 +4,12 @@
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
 
+#define CEILDIV(a,b) (a / b + (a % b != 0))
+
 #define BITMAP_GET(bm,i) (bm[i / 64] & ((uint64_t) 1 << (i % 64)))
 #define BITMAP_SET(bm,i) (bm[i / 64] |= ((uint64_t) 1 << (i % 64)))
+#define BITMAP_CLR(bm,i) (bm[i / 64] &= ~((uint64_t) 1 << (i % 64)))
+
 
 /*
  * Basic data structure for handling Unicode objects
@@ -237,14 +241,14 @@ static Py_ssize_t wagner_fischer(struct strbuf *sb1, struct strbuf *sb2)
     return wagner_fischer_with_cutoff(sb1, sb2);
 }
 
+
 /*
- * Myers bit-parallel algorithm
+ * Myers' bit-parallel algorithm
  *
- * See:
- *   G. Myers. "A fast bit-vector algorithm for approximate string
- *   matching based on dynamic programming." Journal of the ACM, 1999.
+ * See: G. Myers. "A fast bit-vector algorithm for approximate string
+ *      matching based on dynamic programming." Journal of the ACM, 1999.
  */
-static uint64_t bitmap_eq(char chr, char *str, uint64_t len)
+static uint64_t cmpeach(unsigned char chr, unsigned char *str, uint64_t len)
 {
     uint64_t res = 0;
     uint64_t idx;
@@ -255,7 +259,7 @@ static uint64_t bitmap_eq(char chr, char *str, uint64_t len)
     return res;
 }
 
-static uint64_t myers1999(char *text, uint64_t len, char *pat, uint64_t patlen)
+static uint64_t myers1999_simple(unsigned char *text, uint64_t len, unsigned char *pat, uint64_t patlen)
 {
     uint64_t bitmap[4] = {0, 0, 0, 0};
     uint64_t idx;
@@ -272,7 +276,7 @@ static uint64_t myers1999(char *text, uint64_t len, char *pat, uint64_t patlen)
         chr = text[idx];
         if (!BITMAP_GET(bitmap, chr)) {
             BITMAP_SET(bitmap, chr);
-            Peq[chr] = bitmap_eq(chr, pat, patlen);
+            Peq[chr] = cmpeach(chr, pat, patlen);
         }
         Eq = Peq[chr];
 
@@ -295,6 +299,103 @@ static uint64_t myers1999(char *text, uint64_t len, char *pat, uint64_t patlen)
     }
     return Score;
 }
+
+static uint64_t myers1999_block(unsigned char *text, uint64_t len, unsigned char *pat, uint64_t patlen, uint64_t b, uint64_t *Phc, uint64_t *Mhc)
+{
+    uint64_t bitmap[4] = {0, 0, 0, 0};
+    uint64_t blocklen, idx;
+    unsigned char chr, *block;
+    uint64_t Peq[256];
+    uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv, Pb, Mb, Last, Score;
+
+    block = pat + b * 64;
+    blocklen = MIN(64, patlen - b * 64);
+
+    Mv = 0;
+    Pv = ~ (uint64_t) 0;
+    Score = patlen;
+    Last = (uint64_t) 1 << (blocklen - 1);
+
+    for (idx = 0; idx < len; idx++) {
+        chr = text[idx];
+        if (!BITMAP_GET(bitmap, chr)) {
+            BITMAP_SET(bitmap, chr);
+            Peq[chr] = cmpeach(chr, block, blocklen);
+        }
+        Eq = Peq[chr];
+
+        Pb = !!BITMAP_GET(Phc, idx);
+        Mb = !!BITMAP_GET(Mhc, idx);
+
+        Xv = Eq | Mv;
+        Eq |= Mb;
+        Xh = (((Eq & Pv) + Pv) ^ Pv) | Eq;
+
+        Ph = Mv | ~ (Xh | Pv);
+        Mh = Pv & Xh;
+
+        if (Ph & Last) {
+            BITMAP_SET(Phc, idx);
+            Score++;
+        } else {
+            BITMAP_CLR(Phc, idx);
+        }
+        if (Mh & Last) {
+            BITMAP_SET(Mhc, idx);
+            Score--;
+        } else {
+            BITMAP_CLR(Mhc, idx);
+        }
+
+        Ph = (Ph << 1) | Pb;
+        Mh = (Mh << 1) | Mb;
+
+        Pv = Mh | ~ (Xv | Ph);
+        Mv = Ph & Xv;
+    }
+    return Score;
+}
+
+static Py_ssize_t myers1999(struct strbuf *sb1, struct strbuf *sb2)
+{
+    uint64_t i;
+    uint64_t vmax, hmax;
+    uint64_t *Phc, *Mhc;
+    uint64_t res;
+
+    if (sb2->len == 0)
+        return sb1->len;
+
+    if (sb2->len <= 64)
+        return (Py_ssize_t) myers1999_simple(sb1->data, sb1->len, sb2->data, sb2->len);
+
+    hmax = CEILDIV(sb1->len, 64);
+    vmax = CEILDIV(sb2->len, 64);
+
+    Phc = malloc(hmax * sizeof(uint64_t));
+    Mhc = malloc(hmax * sizeof(uint64_t));
+
+    if (Phc == NULL || Mhc == NULL) {
+        PyErr_NoMemory();
+        return -1;
+    }
+
+    for (i = 0; i < hmax; i++) {
+        Mhc[i] = 0;
+        Phc[i] = ~ (uint64_t) 0;
+    }
+
+    for (i = 0; i < vmax; i++)
+        res = myers1999_block(sb1->data, sb1->len, sb2->data, sb2->len, i, Phc, Mhc);
+
+    free(Phc);
+    free(Mhc);
+
+    // Since LevenshteinDistance(sb1, sb2) <= sb1.len,
+    // we can safely cast uint64_t to Py_ssize_t.
+    return (Py_ssize_t) res;
+}
+
 
 /*
  * Interface function
@@ -325,13 +426,13 @@ static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
         res = PyUnicode_Compare(u1, u2) ? 1 : 0;
     } else if (0 < k && k <= 3) {
         res = mbleven(&sb1, &sb2, k);
-    } else if (2 < sb2.len && sb2.len <= 64 && sb1.kind == 1 && sb2.kind == 1) {
-        res = myers1999(sb1.data, sb1.len, sb2.data, sb2.len);
+    } else if (2 < sb2.len && sb1.kind == 1 && sb2.kind == 1) {
+        res = myers1999(&sb1, &sb2);
     } else {
         res = wagner_fischer(&sb1, &sb2);
     }
 
-    if (res == -1)
+    if (res < 0)
         return NULL;
     if (0 < k && k < res)
         res = k + 1;
