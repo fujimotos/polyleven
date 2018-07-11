@@ -1,54 +1,36 @@
 import unittest
+import os
 from itertools import product
 from polyleven import levenshtein
 
 
-def wagner_fischer(s, t):
-    """Simple implementation of Wagner-Fischer algorithm"""
-    n, m = len(s), len(t)
+class TestEnumeratePatterns(unittest.TestCase):
 
-    matrix = {}
-    for i in range(n + 1):
-        matrix[(i, 0)] = i
-    for j in range(m + 1):
-        matrix[(0, j)] = j
+    def setUp(self):
+        basedir = os.path.dirname(__file__)
+        self.fp = open(os.path.join(basedir, 'data/regress.txt'))
 
-    for j in range(1, m + 1):
-        for i in range(1, n + 1):
-            if s[i - 1] == t[j - 1]:
-                matrix[(i, j)] = matrix[(i - 1, j - 1)]
-            else:
-                matrix[(i, j)] = min([
-                    matrix[(i - 1, j)],
-                    matrix[(i, j - 1)],
-                    matrix[(i - 1, j - 1)],
-                ]) + 1
+    def tearDown(self):
+        self.fp.close()
 
-    return matrix[(i,j)]
+    def parseline(self, line):
+        dist, s1, s2 = line.strip().split('|')
+        return int(dist), s1, s2
 
+    def test_basic(self):
+        for line in self.fp:
+            dist, s1, s2 = self.parseline(line)
 
-class TestPolyLeven(unittest.TestCase):
+            with self.subTest(s1=s1,s2=s2):
+                self.assertEqual(dist, levenshtein(s1, s2))
 
-    CHARS = ('', 'a', 'b', 'c')
-
-    PATTERNS = sorted(set("".join(s) for s in product(*[CHARS]*4)))
-
-    def test_unbounded(self):
-        for s1, s2 in product(self.PATTERNS, self.PATTERNS):
-            self.assertEqual(
-                levenshtein(s1, s2),
-                wagner_fischer(s1, s2),
-                "s1='%s' s2='%s'" % (s1, s2)
-            )
-
-    def test_bounded(self):
+    def test_with_upperbound(self):
         for k in range(5):
-            for s1, s2 in product(self.PATTERNS, self.PATTERNS):
-                self.assertEqual(
-                    levenshtein(s1, s2, k),
-                    min(wagner_fischer(s1, s2), k+1),
-                    "s1='%s' s2='%s'" % (s1, s2)
-                )
+            for line in self.fp:
+                dist, s1, s2 = self.parseline(line)
+
+                with self.subTest(k=k,s1=s1,s2=s2):
+                    self.assertEqual(min(dist, k+1), levenshtein(s1, s2, k))
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
