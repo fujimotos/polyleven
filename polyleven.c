@@ -431,7 +431,7 @@ static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
         res = PyUnicode_Compare(u1, u2) ? 1 : 0;
     } else if (0 < k && k <= 3) {
         res = mbleven(&sb1, &sb2, k);
-    } else if (2 < sb2.len && sb1.kind == 1 && sb2.kind == 1) {
+    } else if (sb1.len < UINT64_MAX && sb1.kind == 1 && sb2.kind == 1) {
         res = myers1999(&sb1, &sb2);
     } else {
         res = wagner_fischer(&sb1, &sb2);
