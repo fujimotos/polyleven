@@ -94,16 +94,27 @@ static Py_ssize_t mbleven(struct strbuf *sb1, struct strbuf *sb2, Py_ssize_t k)
 {
     const char *model;
     int row, col;
-    Py_ssize_t res = k + 1;
-    Py_ssize_t dst;
+    Py_ssize_t res;
+    Py_ssize_t diff, dist;
 
-    row = matrix_row_index[k - 1] + (sb1->len - sb2->len);
+    if (k < 1 || 3 < k) {
+        PyErr_SetString(PyExc_ValueError, "k should be 1, 2 or 3");
+        return -1;
+    }
+
+    diff = sb1->len - sb2->len;
+    if (diff > k)
+        return k + 1;
+
+    res = k + 1;
+    row = matrix_row_index[k - 1] + diff;
     for (col = 0; col < MATRIX_COLSIZE; col++) {
         model = matrix[row * MATRIX_COLSIZE + col];
         if (model == NULL)
             break;
-        dst = check_model(sb1, sb2, model);
-        res = MIN(res, dst);
+        dist = check_model(sb1, sb2, model);
+        if (dist < res)
+            res = dist;
     }
 
     return res;
@@ -429,7 +440,7 @@ static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
 
     if (k == 0) {
         res = PyUnicode_Compare(u1, u2) ? 1 : 0;
-    } else if (0 < k && k <= 3) {
+    } else if (1 <= k && k <= 3) {
         res = mbleven(&sb1, &sb2, k);
     } else if (sb1.len < UINT64_MAX && sb1.kind == 1 && sb2.kind == 1) {
         res = myers1999(&sb1, &sb2);
