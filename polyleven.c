@@ -264,37 +264,53 @@ static Py_ssize_t wagner_fischer(struct strbuf *sb1, struct strbuf *sb2)
  * See: G. Myers. "A fast bit-vector algorithm for approximate string
  *      matching based on dynamic programming." Journal of the ACM, 1999.
  */
-static uint64_t cmpeach(unsigned char chr, unsigned char *str, uint64_t len)
+
+static uint64_t cmpeach(Py_UCS4 chr, Py_UCS4 *block, Py_ssize_t len)
 {
     uint64_t res = 0;
-    uint64_t idx;
-    for (idx = 0; idx < len; idx++) {
-        if (chr == str[idx])
-            res |= (uint64_t) 1 << idx;
+    while (len--) {
+        res <<= 1;
+        res |= (chr == block[len]);
     }
     return res;
 }
 
-static uint64_t myers1999_simple(unsigned char *text, uint64_t len, unsigned char *pat, uint64_t patlen)
+static uint64_t cmpeach_cache(Py_UCS4 chr, Py_UCS4 *block, Py_ssize_t len, uint64_t *Peq, Py_UCS4 *map)
 {
-    uint64_t bitmap[4] = {0, 0, 0, 0};
-    uint64_t idx;
-    unsigned char chr;
+    uint8_t pos;
+    if (chr == 0)
+        return cmpeach(chr, block, len);
+
+    pos = chr % 256;
+    if (map[pos] != chr) {
+        Peq[pos] = cmpeach(chr, block, len);
+        map[pos] = chr;
+    }
+    return Peq[pos];
+}
+
+static Py_ssize_t myers1999_simple(struct strbuf *sb1, struct strbuf *sb2)
+{
     uint64_t Peq[256];
-    uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv, Score, Last;
+    uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv, Last;
+
+    Py_ssize_t idx, Score;
+    Py_UCS4 map[256] = {0};
+    Py_UCS4 block[64];
+    Py_UCS4 chr;
 
     Mv = 0;
     Pv = ~ (uint64_t) 0;
-    Score = patlen;
-    Last = (uint64_t) 1 << (patlen - 1);
+    Score = sb2->len;
+    Last = (uint64_t) 1 << (sb2->len - 1);
 
-    for (idx = 0; idx < len; idx++) {
-        chr = text[idx];
-        if (!BITMAP_GET(bitmap, chr)) {
-            BITMAP_SET(bitmap, chr);
-            Peq[chr] = cmpeach(chr, pat, patlen);
-        }
-        Eq = Peq[chr];
+    for (idx = 0; idx < sb2->len; idx++)
+        block[idx] = STRBUF_READ(sb2, idx);
+
+    for (idx = 0; idx < sb1->len; idx++) {
+        chr = STRBUF_READ(sb1, idx);
+
+        Eq = cmpeach_cache(chr, block, sb2->len, Peq, map);
 
         Xv = Eq | Mv;
         Xh = (((Eq & Pv) + Pv) ^ Pv) | Eq;
@@ -316,29 +332,31 @@ static uint64_t myers1999_simple(unsigned char *text, uint64_t len, unsigned cha
     return Score;
 }
 
-static uint64_t myers1999_block(unsigned char *text, uint64_t len, unsigned char *pat, uint64_t patlen, uint64_t b, uint64_t *Phc, uint64_t *Mhc)
+static Py_ssize_t myers1999_block(struct strbuf *sb1, struct strbuf *sb2, uint64_t b, uint64_t *Phc, uint64_t *Mhc)
 {
-    uint64_t bitmap[4] = {0, 0, 0, 0};
-    uint64_t blocklen, idx;
-    unsigned char chr, *block;
     uint64_t Peq[256];
-    uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv, Pb, Mb, Last, Score;
+    uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv, Last;
+    uint8_t Pb, Mb;
 
-    block = pat + b * 64;
-    blocklen = MIN(64, patlen - b * 64);
+    Py_ssize_t idx, Score, blocklen;
+    Py_UCS4 map[256] = {0};
+    Py_UCS4 block[64];
+    Py_UCS4 chr;
+
+    blocklen = MIN(64, sb2->len - b * 64);
 
     Mv = 0;
     Pv = ~ (uint64_t) 0;
-    Score = patlen;
+    Score = sb2->len;
     Last = (uint64_t) 1 << (blocklen - 1);
 
-    for (idx = 0; idx < len; idx++) {
-        chr = text[idx];
-        if (!BITMAP_GET(bitmap, chr)) {
-            BITMAP_SET(bitmap, chr);
-            Peq[chr] = cmpeach(chr, block, blocklen);
-        }
-        Eq = Peq[chr];
+    for (idx = 0; idx < blocklen; idx++)
+        block[idx] = STRBUF_READ(sb2, b * 64 + idx);
+
+    for (idx = 0; idx < sb1->len; idx++) {
+        chr = STRBUF_READ(sb1, idx);
+
+        Eq = cmpeach_cache(chr, block, blocklen, Peq, map);
 
         Pb = !!BITMAP_GET(Phc, idx);
         Mb = !!BITMAP_GET(Mhc, idx);
@@ -383,7 +401,7 @@ static Py_ssize_t myers1999(struct strbuf *sb1, struct strbuf *sb2)
         return sb1->len;
 
     if (sb2->len <= 64)
-        return (Py_ssize_t) myers1999_simple(sb1->data, sb1->len, sb2->data, sb2->len);
+        return myers1999_simple(sb1, sb2);
 
     hmax = CEILDIV(sb1->len, 64);
     vmax = CEILDIV(sb2->len, 64);
@@ -402,14 +420,12 @@ static Py_ssize_t myers1999(struct strbuf *sb1, struct strbuf *sb2)
     }
 
     for (i = 0; i < vmax; i++)
-        res = myers1999_block(sb1->data, sb1->len, sb2->data, sb2->len, i, Phc, Mhc);
+        res = myers1999_block(sb1, sb2, i, Phc, Mhc);
 
     free(Phc);
     free(Mhc);
 
-    // Since LevenshteinDistance(sb1, sb2) <= sb1.len,
-    // we can safely cast uint64_t to Py_ssize_t.
-    return (Py_ssize_t) res;
+    return res;
 }
 
 
@@ -442,7 +458,7 @@ static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
         res = PyUnicode_Compare(u1, u2) ? 1 : 0;
     } else if (1 <= k && k <= 3) {
         res = mbleven(&sb1, &sb2, k);
-    } else if (sb1.len < UINT64_MAX && sb1.kind == 1 && sb2.kind == 1) {
+    } else if (3 <= sb2.len) {
         res = myers1999(&sb1, &sb2);
     } else {
         res = wagner_fischer(&sb1, &sb2);
