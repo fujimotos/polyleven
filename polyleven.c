@@ -264,53 +264,55 @@ static Py_ssize_t wagner_fischer(struct strbuf *sb1, struct strbuf *sb2)
  * See: G. Myers. "A fast bit-vector algorithm for approximate string
  *      matching based on dynamic programming." Journal of the ACM, 1999.
  */
-
-static uint64_t cmpeach(Py_UCS4 chr, Py_UCS4 *block, Py_ssize_t len)
+static uint64_t myers1999_geteq(uint64_t *Peq, uint64_t *map, Py_UCS4 c)
 {
-    uint64_t res = 0;
-    while (len--) {
-        res <<= 1;
-        res |= (chr == block[len]);
+    uint8_t h = c % 256;
+    while (1) {
+        if (map[h] == c)
+            return Peq[h];
+        if (map[h] == UINT64_MAX)
+            return 0;
+        h++;
     }
-    return res;
 }
 
-static uint64_t cmpeach_cache(Py_UCS4 chr, Py_UCS4 *block, Py_ssize_t len, uint64_t *Peq, Py_UCS4 *map)
+static void myers1999_setup(uint64_t *Peq, uint64_t *map, struct strbuf *sb, uint64_t start, uint8_t len)
 {
-    uint8_t pos;
-    if (chr == 0)
-        return cmpeach(chr, block, len);
+    Py_UCS4 c;
+    uint8_t h;
 
-    pos = chr % 256;
-    if (map[pos] != chr) {
-        Peq[pos] = cmpeach(chr, block, len);
-        map[pos] = chr;
+    memset(map, -1, sizeof(uint64_t) * 256);
+
+    while (len--) {
+        c = STRBUF_READ(sb, start + len);
+        h = c % 256;
+        while (map[h] != UINT64_MAX && map[h] != c)
+            h++;
+        if (map[h] == UINT64_MAX) {
+            map[h] = c;
+            Peq[h] = 0;
+        }
+        Peq[h] |= (uint64_t) 1 << len;
     }
-    return Peq[pos];
 }
 
 static Py_ssize_t myers1999_simple(struct strbuf *sb1, struct strbuf *sb2)
 {
     uint64_t Peq[256];
+    uint64_t map[256];
     uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv, Last;
 
     Py_ssize_t idx, Score;
-    Py_UCS4 map[256] = {0};
-    Py_UCS4 block[64];
-    Py_UCS4 chr;
 
     Mv = 0;
     Pv = ~ (uint64_t) 0;
     Score = sb2->len;
     Last = (uint64_t) 1 << (sb2->len - 1);
 
-    for (idx = 0; idx < sb2->len; idx++)
-        block[idx] = STRBUF_READ(sb2, idx);
+    myers1999_setup(Peq, map, sb2, 0, sb2->len);
 
     for (idx = 0; idx < sb1->len; idx++) {
-        chr = STRBUF_READ(sb1, idx);
-
-        Eq = cmpeach_cache(chr, block, sb2->len, Peq, map);
+        Eq = myers1999_geteq(Peq, map, STRBUF_READ(sb1, idx));
 
         Xv = Eq | Mv;
         Xh = (((Eq & Pv) + Pv) ^ Pv) | Eq;
@@ -335,28 +337,24 @@ static Py_ssize_t myers1999_simple(struct strbuf *sb1, struct strbuf *sb2)
 static Py_ssize_t myers1999_block(struct strbuf *sb1, struct strbuf *sb2, uint64_t b, uint64_t *Phc, uint64_t *Mhc)
 {
     uint64_t Peq[256];
+    uint64_t map[256];
     uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv, Last;
-    uint8_t Pb, Mb;
+    uint8_t Pb, Mb, vlen;
 
-    Py_ssize_t idx, Score, blocklen;
-    Py_UCS4 map[256] = {0};
-    Py_UCS4 block[64];
-    Py_UCS4 chr;
+    Py_ssize_t idx, start, Score;
 
-    blocklen = MIN(64, sb2->len - b * 64);
+    start = b * 64;
+    vlen = MIN(64, sb2->len - start);
 
     Mv = 0;
     Pv = ~ (uint64_t) 0;
     Score = sb2->len;
-    Last = (uint64_t) 1 << (blocklen - 1);
+    Last = (uint64_t) 1 << (vlen - 1);
 
-    for (idx = 0; idx < blocklen; idx++)
-        block[idx] = STRBUF_READ(sb2, b * 64 + idx);
+    myers1999_setup(Peq, map, sb2, start, vlen);
 
     for (idx = 0; idx < sb1->len; idx++) {
-        chr = STRBUF_READ(sb1, idx);
-
-        Eq = cmpeach_cache(chr, block, blocklen, Peq, map);
+        Eq = myers1999_geteq(Peq, map, STRBUF_READ(sb1, idx));
 
         Pb = !!BITMAP_GET(Phc, idx);
         Mb = !!BITMAP_GET(Mhc, idx);
