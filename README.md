@@ -2,7 +2,9 @@ polyleven
 =========
 
 Polyleven is a C-implemented Python library that can compute Levenshtein
-distance between two strings efficiently.
+distance between two strings. The focus of this library is efficiently.
+To archive this goal, polyleven combines a number of special case algorithms
+under the hood.
 
 Requirements
 ------------
@@ -67,21 +69,21 @@ The system used for this benchmark was:
 
  Test target                    |  TIME[sec]  |  SPEED[calls/s]
 ------------------------------- | ----------- | ----------------
-edlib.align                     |   4.351     |      227,937
-editdistance.eval               |   1.893     |      523,802
-jellyfish.levenshtein\_distance |   0.757     |    1,309,227
-distance.levenshtein            |   0.601     |    1,651,095
-polyleven.levenshtein           |   0.516     |    1,920,087
-Levenshtein.distance            |   0.470     |    2,108,491
+edlib.align                     |  4.763      |      208,216
+editdistance.eval               |  1.943      |      510,450
+jellyfish.levenshtein\_distance |  0.722      |    1,374,081
+distance.levenshtein            |  0.623      |    1,591,396
+Levenshtein.distance            |  0.500      |    1,982,764
+polyleven.levenshtein           |  0.431      |    2,303,420
 
 Also, by setting a maximum threshold to compute, polyleven becomes
-1.6-2.1x faster than the fastest general functions:
+1.5-2.0x faster than the fastest general functions:
 
  Test target                    |  TIME[sec]  |  SPEED[calls/s]
 ------------------------------- | ----------- | ----------------
-polyleven.levenshtein (k=3)     |   0.290     |    3,415,349
-polyleven.levenshtein (k=2)     |   0.244     |    4,063,028
-polyleven.levenshtein (k=1)     |   0.228     |    4,349,852
+polyleven.levenshtein (k=3)     |  0.311      |    3,189,790
+polyleven.levenshtein (k=2)     |  0.256      |    3,876,265
+polyleven.levenshtein (k=1)     |  0.234      |    4,243,284
 
 The script and data set used for this benchmark is available in the
 `test` directory.
@@ -92,5 +94,5 @@ The script and data set used for this benchmark is available in the
 * editdistance (0.4) https://github.com/aflc/editdistance
 * jellyfish (0.5.6) https://github.com/jamesturk/jellyfish
 * distance (0.1.3) https://github.com/doukremt/distance
-* polyleven (0.1) https://github.com/fujimotos/polyleven
+* polyleven (0.3) https://github.com/fujimotos/polyleven
 * Python-Levenshtein (0.12) https://github.com/ztane/python-Levenshtein/
