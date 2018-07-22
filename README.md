@@ -51,13 +51,18 @@ computational time significantly (see Benchmark below).
 Benchmark
 ---------
 
+Note: The scripts and data sets used in the following benchmarks are all
+available in the test directory of this repository.
+
+### Benchmark 1: English Words
+
 To evaluate edit-distance libraries found on PyPI and GitHub, I used
 an English dictionary with 99,717 words (which is retrieved from
 Debian's `wamerican` package).
 
 With randomly chosen 10 input words, each library was used to compute
 the edit distance with every word in the dictionary. The execution time
-was measured using the `time` module in the Python standard library.
+was measured using the `timeit` module in the Python standard library.
 
 The system used for this benchmark was:
 
@@ -65,7 +70,7 @@ The system used for this benchmark was:
 * Linux x86-64 (Debian Stretch)
 * Python 3.5.3 / GCC 6.3.0
 
-### Result
+#### Result
 
  Test target                    |  TIME[sec]  |  SPEED[calls/s]
 ------------------------------- | ----------- | ----------------
@@ -85,8 +90,23 @@ polyleven.levenshtein (k=3)     |  0.311      |    3,189,790
 polyleven.levenshtein (k=2)     |  0.256      |    3,876,265
 polyleven.levenshtein (k=1)     |  0.234      |    4,243,284
 
-The script and data set used for this benchmark is available in the
-`test` directory.
+### Benchmark 2: Longer inputs
+
+To measure how each library behaves when the length of input strings
+increases, I generated 5000 pairs of strings for each size N = (16, 32,
+64, 128, 256, 512, 1024). The computation time was measured in the same
+way as the previous test (Benchmark 1).
+
+#### Result
+
+ Test target                    | N=16  | N=32  | N=64  | N=128 | N=256 | N=512 | N=1024
+------------------------------- | ----- | ----- | ----- | ----- | ----- | ----- | ------
+edlib.align                     | 0.040 | 0.063 | 0.094 | 0.205 | 0.432 | 0.908 |  2.089
+editdistance.eval               | 0.027 | 0.049 | 0.086 | 0.178 | 0.336 | 0.740 | 58.139
+jellyfish.levenshtein\_distance | 0.009 | 0.032 | 0.118 | 0.470 | 1.874 | 8.877 | 42.848
+distance.levenshtein            | 0.007 | 0.029 | 0.109 | 0.431 | 1.726 | 6.950 | 27.998
+Levenshtein.distance            | 0.006 | 0.022 | 0.085 | 0.336 | 1.328 | 5.286 | 21.097
+polyleven.levenshtein           | 0.003 | 0.005 | 0.010 | 0.043 | 0.149 | 0.550 |  2.109
 
 ### The list of libraries
 
