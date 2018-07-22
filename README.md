@@ -3,11 +3,14 @@ polyleven
 
 Polyleven is a C-implemented Python library that can compute Levenshtein
 distance between two strings. The focus of this library is efficiently.
-To archive this goal, polyleven combines a number of special case algorithms
-under the hood.
+Namely, it aims to be one of the fastest Pythonic Levenshtein libraries
+with lower memory consumption.
 
-Requirements
-------------
+To archive this goal, polyleven 1) combines a number of special case
+algorithms under the hood and 2) is implemented using raw Python C/API.
+
+Prerequirements
+---------------
 
  - Python 3.4 or later
  - C compiler (e.g. GCC)
@@ -19,8 +22,8 @@ You can install polyleven via PyPI:
 
     $ pip install polyleven
 
-Usage
------
+How to use
+----------
 
 Polyleven provides a function `levenshtein()` that computes the edit
 distance between the input strings:
@@ -86,10 +89,10 @@ polyleven.levenshtein (k=1)     |  0.234      |    4,243,284
 
 ### Benchmark 2: Longer inputs
 
-To measure how each library behaves when the length of input strings
-increases, I generated 5000 pairs of strings for each size N = (16, 32,
-64, 128, 256, 512, 1024). The computation time was measured in the same
-way as the previous test (Benchmark 1).
+To measure how each library behaves when the size of inputs increases,
+I generated 5000 pairs of strings for each size N = {16, 32, 64, 128,
+256, 512, 1024}. The computation time was measured in the same way as
+the previous test (Benchmark 1).
 
 #### Result
 
