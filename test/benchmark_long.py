@@ -43,16 +43,24 @@ def get_platform():
     pyver = platform.python_version()
     return 'Python %s on %s (%s)' % (pyver, uname.system, uname.machine)
 
+def gen_inputs(total, sizes):
+    res = {}
+    for s in sizes:
+        res[s] = [(random_string(s), random_string(s)) for x in range(total)]
+    return res
+
 def benchmark():
-    total = 10000
-    sizes = (8, 16, 32, 64, 128, 256, 512, 1024)
+    total = 5000
+    sizes = (16, 32, 64, 128, 256, 512, 1024)
+
+    data = gen_inputs(total, sizes)
 
     print('System: %s' % get_platform())
-    print('Total : %s calls\n' % total)
+    print('Sample: %s\n' % total)
 
     print('%-30s ' % "#", end='')
     for s in sizes:
-        print('n=%-6s ' % s, end='')
+        print('N=%-6s ' % s, end='')
     print()
 
     def wrap(f, pairs):
@@ -69,8 +77,7 @@ def benchmark():
 
         print('%-30s ' % target, end='')
         for s in sizes:
-            pairs = [(random_string(s), random_string(s)) for x in range(total)]
-            sec = timeit('func()', globals={'func': wrap(func, pairs)}, number=1)
+            sec = timeit('func()', globals={'func': wrap(func, data[s])}, number=1)
             print('%-8.3f ' % sec, end='')
         print()
 
