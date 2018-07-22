@@ -15,15 +15,9 @@ Requirements
 How to install
 --------------
 
-Install via pip:
+You can install polyleven via PyPI:
 
-    $ pip install git+https://github.com/fujimotos/polyleven
-
-Or clone this repository and run setup.py:
-
-    $ git clone https://github.com/fujimotos/polyleven
-    $ cd polyleven
-    $ python3 setup.py install
+    $ pip install polyleven
 
 Usage
 -----
