@@ -1,32 +1,19 @@
 polyleven
 =========
 
-Polyleven is a C-implemented Python library that can compute Levenshtein
-distance between two strings. The focus of this library is efficiently.
-Namely, it aims to be one of the fastest Pythonic Levenshtein libraries
-with lower memory consumption.
+Polyleven is an efficient Levenshtein distance library for Python.
 
-To archive this goal, polyleven 1) combines a number of special case
-algorithms under the hood and 2) is implemented using raw Python C/API.
-
-Prerequirements
----------------
-
- - Python 3.4 or later
- - C compiler (e.g. GCC)
-
-How to install
---------------
-
-You can install polyleven via PyPI:
+Installation
+------------
 
     $ pip install polyleven
 
-How to use
-----------
+Note: You need Python >= 3.4 and a C compiler to install polyleven.
 
-Polyleven provides a function `levenshtein()` that computes the edit
-distance between the input strings:
+Usage
+-----
+
+Use `polyleven.levenshtein()` to compute Levenshtein distance:
 
 ```python
 >>> from polyleven import levenshtein
@@ -34,9 +21,8 @@ distance between the input strings:
 1
 ```
 
-This function takes an (optional) third parameter, with which you can
-specify the upper bound of distance to compute. This can reduce the
-computational time significantly (see Benchmark below).
+You can pass a third argument, which denotes the maximum distance to
+compute. This can make computations a lot faster.
 
 ```python
 >>> dist = levenshtein('abcde', 'abc', 2)
@@ -48,18 +34,10 @@ computational time significantly (see Benchmark below).
 Benchmark
 ---------
 
-Note: The scripts and data sets used in the following benchmarks are all
-available in the test directory of this repository.
-
-### Benchmark 1: English Words
-
-To evaluate edit-distance libraries found on PyPI and GitHub, I used
-an English dictionary with 99,717 words (which is retrieved from
-Debian's `wamerican` package).
-
-With randomly chosen 10 input words, each library was used to compute
-the edit distance with every word in the dictionary. The execution time
-was measured using the `timeit` module in the Python standard library.
+For this benchmark, I choose a random word and computed the Levenshtein
+distance with every entry in a modest-sized English dictionary (100k
+words). I repeated the procedure 10 times, using a different input word
+each time.
 
 The system used for this benchmark was:
 
@@ -67,7 +45,7 @@ The system used for this benchmark was:
 * Linux x86-64 (Debian Stretch)
 * Python 3.5.3 / GCC 6.3.0
 
-#### Result
+**Result**
 
  Test target                    |  TIME[sec]  |  SPEED[calls/s]
 ------------------------------- | ----------- | ----------------
@@ -78,8 +56,7 @@ distance.levenshtein            |  0.623      |    1,591,396
 Levenshtein.distance            |  0.500      |    1,982,764
 polyleven.levenshtein           |  0.431      |    2,303,420
 
-Also, by setting a maximum threshold to compute, polyleven becomes
-1.5-2.0x faster than the fastest general functions:
+**Result (with maximum threshold)**
 
  Test target                    |  TIME[sec]  |  SPEED[calls/s]
 ------------------------------- | ----------- | ----------------
@@ -87,14 +64,17 @@ polyleven.levenshtein (k=3)     |  0.311      |    3,189,790
 polyleven.levenshtein (k=2)     |  0.256      |    3,876,265
 polyleven.levenshtein (k=1)     |  0.234      |    4,243,284
 
-### Benchmark 2: Longer inputs
+Benchmark: How about longer inputs?
+-----------------------------------
 
-To measure how each library behaves when the size of inputs increases,
-I generated 5000 pairs of strings for each size N = {16, 32, 64, 128,
-256, 512, 1024}. The computation time was measured in the same way as
-the previous test (Benchmark 1).
+This test shows how each library behaves as the size of input strings
+increases.
 
-#### Result
+For this test, I generated 5000 pairs of strings for each size 16, 32,
+64, 128, 256, 512, 1024. I measured the time each library takes to
+process all the given pairs.
+
+**Result**
 
  Test target                    | N=16  | N=32  | N=64  | N=128 | N=256 | N=512 | N=1024
 ------------------------------- | ----- | ----- | ----- | ----- | ----- | ----- | ------
@@ -105,7 +85,10 @@ distance.levenshtein            | 0.007 | 0.029 | 0.109 | 0.431 | 1.726 | 6.950 
 Levenshtein.distance            | 0.006 | 0.022 | 0.085 | 0.336 | 1.328 | 5.286 | 21.097
 polyleven.levenshtein           | 0.003 | 0.005 | 0.010 | 0.043 | 0.149 | 0.550 |  2.109
 
-### The list of libraries
+List of libraries
+-----------------
+
+I used the following libraries in the benchmarks above:
 
 * edlib (1.2.1) https://github.com/Martinsos/edlib
 * editdistance (0.4) https://github.com/aflc/editdistance
@@ -113,3 +96,11 @@ polyleven.levenshtein           | 0.003 | 0.005 | 0.010 | 0.043 | 0.149 | 0.550 
 * distance (0.1.3) https://github.com/doukremt/distance
 * polyleven (0.3) https://github.com/fujimotos/polyleven
 * Python-Levenshtein (0.12) https://github.com/ztane/python-Levenshtein/
+
+Links
+-----
+
+These articles explain the ideas implemented in polyleven:
+
+- [Can we optimize the Wagner-Fischer algorithm?](https://ceptord.net/wagner-fischer/)
+- [mbleven — A fast algorithm for k-bounded Levenshtein distance](https://ceptord.net/fastcomp/)
