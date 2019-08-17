@@ -470,55 +470,12 @@ static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
     return PyLong_FromSsize_t(res);
 }
 
-
-static PyObject* polyleven_debug(PyObject *self, PyObject *args)
-{
-    PyObject *u1, *u2;
-    struct strbuf sb1, sb2, tmp;
-    int m = 0;
-    Py_ssize_t k = -1;
-    Py_ssize_t res;
-
-    if (!PyArg_ParseTuple(args, "iUU|n", &m, &u1, &u2, &k))
-        return NULL;
-
-    strbuf_init(u1, &sb1);
-    strbuf_init(u2, &sb2);
-
-    if (sb1.len < sb2.len) {
-        tmp = sb1;
-        sb1 = sb2;
-        sb2 = tmp;
-    }
-
-    switch (m) {
-        case 1:
-            res = mbleven(&sb1, &sb2, k);
-            break;
-        case 2:
-            res = myers1999(&sb1, &sb2);
-            break;
-        default:
-            res = wagner_fischer(&sb1, &sb2);
-            break;
-    }
-
-    if (res < 0)
-        return NULL;
-    if (0 < k && k < res)
-        res = k + 1;
-
-    return PyLong_FromSsize_t(res);
-}
-
 /*
  * Define an entry point for importing this module
  */
 static PyMethodDef polyleven_methods[] = {
     {"levenshtein", polyleven_levenshtein, METH_VARARGS,
      "Compute the levenshtein distance between two strings"},
-    {"_debug", polyleven_debug, METH_VARARGS,
-     "Debug interface. Do not use"}
 };
 
 static struct PyModuleDef polyleven_definition = {
