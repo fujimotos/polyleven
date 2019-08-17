@@ -19,11 +19,11 @@ under the hood.""",
     zip_safe=False,
     python_requires='>=3.4',
     keywords=['Levenshtein distance'],
-    classifiers=(
+    classifiers=[
         'Development Status :: 4 - Beta',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3',
         'Programming Language :: C',
         'License :: Public Domain',
-    )
+    ]
 )
