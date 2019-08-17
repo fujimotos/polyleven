@@ -1,5 +1,6 @@
 #include <Python.h>
 #include <stdint.h>
+#include <assert.h>
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
@@ -28,86 +29,98 @@ static void strbuf_init(PyObject *unicode, struct strbuf *sb)
 }
 
 #define STRBUF_READ(sb,idx) (PyUnicode_READ((sb)->kind, (sb)->data, (idx)))
+#define ISASCII(o) (PyUnicode_KIND(o) == PyUnicode_1BYTE_KIND)
 
 /*
- * The model table for mbleven algorithm.
+ * An encoded mbleven model table.
+ *
+ * Each 8-bit integer represents an edit sequence, with using two
+ * bits for a single operation.
+ *
+ *   01 = DELETE, 10 = INSERT, 11 = REPLACE
+ *
+ * For example, 13 is '1101' in binary notation, so it means
+ * DELETE + REPLACE.
  */
-static const char *matrix[] = {
-      "r",  NULL,  NULL,  NULL,  NULL,  NULL,  NULL, // 1
-      "d",  NULL,  NULL,  NULL,  NULL,  NULL,  NULL,
-     "rr",  "id",  "di",  NULL,  NULL,  NULL,  NULL, // 2
-     "rd",  "dr",  NULL,  NULL,  NULL,  NULL,  NULL,
-     "dd",  NULL,  NULL,  NULL,  NULL,  NULL,  NULL,
-    "rrr", "idr", "ird", "rid", "rdi", "dri", "dir", // 3
-    "rrd", "rdr", "drr", "idd", "did", "ddi",  NULL,
-    "rdd", "drd", "ddr",  NULL,  NULL,  NULL,  NULL,
-    "ddd",  NULL,  NULL,  NULL,  NULL,  NULL,  NULL,
+static const uint8_t MBLEVEN_MATRIX[] = {
+     3,   0,  0,  0,  0,  0,  0,  0,
+     1,   0,  0,  0,  0,  0,  0,  0,
+     15,  9,  6,  0,  0,  0,  0,  0,
+     13,  7,  0,  0,  0,  0,  0,  0,
+     5,   0,  0,  0,  0,  0,  0,  0,
+     63, 39, 45, 57, 54, 30, 27,  0,
+     61, 55, 31, 37, 25, 22,  0,  0,
+     53, 29, 23,  0,  0,  0,  0,  0,
+     21,  0,  0,  0,  0,  0,  0,  0,
 };
 
-static const int matrix_row_index[3] = { 0, 2, 5 };
+#define MBLEVEN_MATRIX_GET(k, d) ((((k) + (k) * (k)) / 2 - 1) + (d)) * 8
 
-#define MATRIX_COLSIZE 7
-
-/*
- * mbleven algorithm
- */
-static Py_ssize_t check_model(struct strbuf *sb1, struct strbuf *sb2, const char *model)
+static int64_t mbleven_ascii(uint8_t *s1, uint8_t *s2, int64_t len1, int64_t len2, int k)
 {
-    Py_ssize_t i = 0, j = 0, c = 0;
+    int pos;
+    uint8_t m;
+    int64_t i, j, c, r;
 
-    while (i < sb1->len && j < sb2->len) {
-        if (STRBUF_READ(sb1, i) != STRBUF_READ(sb2, j)) {
-            switch (model[c]) {
-                case 'd':
-                    i++;
-                    break;
-                case 'i':
-                    j++;
-                    break;
-                case 'r':
-                    i++;
-                    j++;
-                    break;
-                case '\0':
-                    return c + 1;
+    assert(len1 > len2);
+    assert(0 < k && k <= 3);
+
+    pos = MBLEVEN_MATRIX_GET(k, len1 - len2);
+    r = k + 1;
+
+    while (MBLEVEN_MATRIX[pos]) {
+        m = MBLEVEN_MATRIX[pos++];
+        i = j = c = 0;
+        while (i < len1 && j < len2) {
+            if (s1[i] != s2[j]) {
+                c++;
+                if (!m) break;
+                if (m & 1) i++;
+                if (m & 2) j++;
+                m >>= 2;
+            } else {
+                i++;
+                j++;
             }
-            c++;
-        } else {
-            i++;
-            j++;
         }
+        c += (len1 - i) + (len2 - j);
+        r = MIN(r, c);
     }
-    return c + (sb1->len - i) + (sb2->len - j);
+    return r;
 }
 
-static Py_ssize_t mbleven(struct strbuf *sb1, struct strbuf *sb2, Py_ssize_t k)
+static int64_t mbleven(void *p1, void *p2, int64_t len1, int64_t len2,
+                       int kd1, int kd2, int64_t k)
 {
-    const char *model;
-    int row, col;
-    Py_ssize_t res;
-    Py_ssize_t diff, dist;
+    int pos;
+    uint8_t m;
+    int64_t i, j, c, r;
 
-    if (k < 1 || 3 < k) {
-        PyErr_SetString(PyExc_ValueError, "k should be 1, 2 or 3");
-        return -1;
+    assert(len1 > len2);
+    assert(0 < k && k <= 3);
+
+    pos = MBLEVEN_MATRIX_GET(k, len1 - len2);
+    r = k + 1;
+
+    while (MBLEVEN_MATRIX[pos]) {
+        m = MBLEVEN_MATRIX[pos++];
+        i = j = c = 0;
+        while (i < len1 && j < len2) {
+            if (PyUnicode_READ(kd1, p1, i) != PyUnicode_READ(kd2, p2, j)) {
+                c++;
+                if (!m) break;
+                if (m & 1) i++;
+                if (m & 2) j++;
+                m >>= 2;
+            } else {
+                i++;
+                j++;
+            }
+        }
+        c += (len1 - i) + (len2 - j);
+        r = MIN(r, c);
     }
-
-    diff = sb1->len - sb2->len;
-    if (diff > k)
-        return k + 1;
-
-    res = k + 1;
-    row = matrix_row_index[k - 1] + diff;
-    for (col = 0; col < MATRIX_COLSIZE; col++) {
-        model = matrix[row * MATRIX_COLSIZE + col];
-        if (model == NULL)
-            break;
-        dist = check_model(sb1, sb2, model);
-        if (dist < res)
-            res = dist;
-    }
-
-    return res;
+    return r;
 }
 
 /*
@@ -284,16 +297,16 @@ static Py_ssize_t myers1999(struct strbuf *sb1, struct strbuf *sb2)
  */
 static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
 {
-    PyObject *u1, *u2;
+    PyObject *o1, *o2;
     struct strbuf sb1, sb2, tmp;
     Py_ssize_t k = -1;
     Py_ssize_t res;
 
-    if (!PyArg_ParseTuple(args, "UU|n", &u1, &u2, &k))
+    if (!PyArg_ParseTuple(args, "UU|n", &o1, &o2, &k))
         return NULL;
 
-    strbuf_init(u1, &sb1);
-    strbuf_init(u2, &sb2);
+    strbuf_init(o1, &sb1);
+    strbuf_init(o2, &sb2);
 
     if (sb1.len < sb2.len) {
         tmp = sb1;
@@ -305,9 +318,23 @@ static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
         return PyLong_FromSsize_t(k + 1);
 
     if (k == 0) {
-        res = PyUnicode_Compare(u1, u2) ? 1 : 0;
+        res = PyUnicode_Compare(o1, o2) ? 1 : 0;
     } else if (1 <= k && k <= 3) {
-        res = mbleven(&sb1, &sb2, k);
+        if (ISASCII(o1) && ISASCII(o2)) {
+            res = mbleven_ascii(PyUnicode_DATA(o1),
+                                PyUnicode_DATA(o2),
+                                PyUnicode_GET_LENGTH(o1),
+                                PyUnicode_GET_LENGTH(o2),
+                                k);
+        } else {
+            res = mbleven(PyUnicode_DATA(o1),
+                          PyUnicode_DATA(o2),
+                          PyUnicode_GET_LENGTH(o1),
+                          PyUnicode_GET_LENGTH(o2),
+                          PyUnicode_KIND(o1),
+                          PyUnicode_KIND(o2),
+                          k);
+        }
     } else {
         res = myers1999(&sb1, &sb2);
     }
