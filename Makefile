@@ -13,11 +13,8 @@ bench:
 bench-long:
 	$(PYTHON) test/benchmark_long.py
 
-test: test/data/regress.txt
+test:
 	$(PYTHON) test/regression.py
-
-test/data/regress.txt:
-	$(PYTHON) test/maketest.py > $@
 
 sdist: clean
 	$(PYTHON) setup.py sdist
@@ -31,4 +28,4 @@ clean:
 	rm -r build
 	rm -r dist
 
-.PHONY: all install bench bench-long test sdist clean
+.PHONY: all install bench bench-long test sdist clean archive

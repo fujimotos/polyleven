@@ -4,32 +4,10 @@
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
-
-#define CEILDIV(a,b) (a / b + (a % b != 0))
-
-#define BITMAP_GET(bm,i) (bm[i / 64] & ((uint64_t) 1 << (i % 64)))
-#define BITMAP_SET(bm,i) (bm[i / 64] |= ((uint64_t) 1 << (i % 64)))
-#define BITMAP_CLR(bm,i) (bm[i / 64] &= ~((uint64_t) 1 << (i % 64)))
-
-
-/*
- * Basic data structure for handling Unicode objects
- */
-struct strbuf {
-    void *data;
-    int kind;
-    Py_ssize_t len;
-};
-
-static void strbuf_init(PyObject *unicode, struct strbuf *sb)
-{
-    sb->data = PyUnicode_DATA(unicode);
-    sb->kind = PyUnicode_KIND(unicode);
-    sb->len = PyUnicode_GET_LENGTH(unicode);
-}
-
-#define STRBUF_READ(sb,idx) (PyUnicode_READ((sb)->kind, (sb)->data, (idx)))
-#define ISASCII(o) (PyUnicode_KIND(o) == PyUnicode_1BYTE_KIND)
+#define CDIV(a,b) ((a) / (b) + ((a) % (b) > 0))
+#define BIT(i,n) (((i) >> (n)) & 1)
+#define FLIP(i,n) ((i) ^ ((uint64_t) 1 << (n)))
+#define ISASCII(kd) ((kd) == PyUnicode_1BYTE_KIND)
 
 /*
  * An encoded mbleven model table.
@@ -124,60 +102,140 @@ static int64_t mbleven(void *p1, void *p2, int64_t len1, int64_t len2,
 }
 
 /*
+ * A hash table that maps Unicode characters to bitmap integers.
+ *
+ * (1 << 31) might seem odd, but it allows us to handle '\0' as a
+ * valid character. Since Unicode only uses the lower 21 bits,
+ * flagging 31th bit should break nothing.
+ */
+struct bit_table {
+    uint32_t k[128];
+    uint64_t v[128];
+};
+
+static uint64_t bit_table_get(struct bit_table *bt, uint32_t c)
+{
+    uint8_t h = c % 128;
+    uint32_t k = c | ((uint32_t) 1 << 31);
+
+    while (bt->k[h] && bt->k[h] != k)
+        h++;
+    return bt->k[h] == k ? bt->v[h] : 0;
+}
+
+static void bit_table_set(struct bit_table *bt, uint32_t c, int8_t i)
+{
+    uint8_t h = c % 128;
+    uint32_t k = c | ((uint32_t) 1 << 31);
+
+    while (bt->k[h] && bt->k[h] != k)
+        h++;
+    bt->k[h] = k;
+    bt->v[h] |= (uint64_t) 1 << i;
+}
+
+static struct bit_table *create_bit_tables(void *p, int kd, int64_t len)
+{
+    int64_t i;
+    struct bit_table *tables;
+
+    tables = calloc(1, CDIV(len, 64) * sizeof(struct bit_table));
+    if (tables == NULL) {
+        PyErr_NoMemory();
+        return NULL;
+    }
+    for (i = 0; i < len; i++)
+        bit_table_set(&tables[i / 64], PyUnicode_READ(kd, p, i), i % 64);
+    return tables;
+}
+
+/*
  * Myers' bit-parallel algorithm
  *
  * See: G. Myers. "A fast bit-vector algorithm for approximate string
  *      matching based on dynamic programming." Journal of the ACM, 1999.
  */
-static uint64_t myers1999_geteq(uint64_t *Peq, uint64_t *map, Py_UCS4 c)
+static int64_t myers1999(void *p1, void *p2, int64_t len1, int64_t len2,
+                         int kd1, int kd2, struct bit_table *tables)
 {
-    uint8_t h = c % 256;
-    while (1) {
-        if (map[h] == c)
-            return Peq[h];
-        if (map[h] == UINT64_MAX)
-            return 0;
-        h++;
+    uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv;
+    uint64_t *Mhc, *Phc;
+    int64_t i, b, hsize, vsize;
+    int64_t Score = len2;
+    uint8_t Pb, Mb;
+
+    assert(len1 > len2);
+    assert(len2 > 0);
+
+    hsize = CDIV(len1, 64);
+    vsize = CDIV(len2, 64);
+
+    Phc = malloc(hsize * 2 * sizeof(uint64_t));
+    if (Phc == NULL) {
+        PyErr_NoMemory();
+        return -1;
     }
-}
+    Mhc = Phc + hsize;
+    memset(Phc, -1, hsize * sizeof(uint64_t));
+    memset(Mhc, 0, hsize * sizeof(uint64_t));
 
-static void myers1999_setup(uint64_t *Peq, uint64_t *map, struct strbuf *sb, uint64_t start, uint8_t len)
-{
-    Py_UCS4 c;
-    uint8_t h;
+    for (b = 0; b < vsize; b++) {
+        Mv = 0;
+        Pv = (uint64_t) -1;
+        Score = len2;
 
-    memset(map, -1, sizeof(uint64_t) * 256);
+        for (i = 0; i < len1; i++) {
+            Eq = bit_table_get(&tables[b], PyUnicode_READ(kd1, p1, i));
 
-    while (len--) {
-        c = STRBUF_READ(sb, start + len);
-        h = c % 256;
-        while (map[h] != UINT64_MAX && map[h] != c)
-            h++;
-        if (map[h] == UINT64_MAX) {
-            map[h] = c;
-            Peq[h] = 0;
+            Pb = BIT(Phc[i / 64], i % 64);
+            Mb = BIT(Mhc[i / 64], i % 64);
+
+            Xv = Eq | Mv;
+            Xh = ((((Eq | Mb) & Pv) + Pv) ^ Pv) | Eq | Mb;
+
+            Ph = Mv | ~ (Xh | Pv);
+            Mh = Pv & Xh;
+
+            Score += BIT(Ph, len2 % 64 - 1);
+            Score -= BIT(Mh, len2 % 64 - 1);
+
+            if ((Ph >> 63) ^ Pb)
+                Phc[i / 64] = FLIP(Phc[i / 64], i % 64);
+
+            if ((Mh >> 63) ^ Mb)
+                Mhc[i / 64] = FLIP(Mhc[i / 64], i % 64);
+
+            Ph = (Ph << 1) | Pb;
+            Mh = (Mh << 1) | Mb;
+
+            Pv = Mh | ~ (Xv | Ph);
+            Mv = Ph & Xv;
         }
-        Peq[h] |= (uint64_t) 1 << len;
     }
+    free(Phc);
+    return Score;
 }
 
-static Py_ssize_t myers1999_simple(struct strbuf *sb1, struct strbuf *sb2)
+static int64_t myers1999_ascii(uint8_t *s1, uint8_t *s2, int64_t len1, int64_t len2)
 {
     uint64_t Peq[256];
-    uint64_t map[256];
     uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv, Last;
+    int64_t i;
+    int64_t Score = len2;
 
-    Py_ssize_t idx, Score;
+    assert(len1 < len2);
+
+    memset(Peq, 0, sizeof(Peq));
+
+    for (i = 0; i < len2; i++)
+        Peq[s2[i]] |= (uint64_t) 1 << i;
 
     Mv = 0;
-    Pv = ~ (uint64_t) 0;
-    Score = sb2->len;
-    Last = (uint64_t) 1 << (sb2->len - 1);
+    Pv = (uint64_t) -1;
+    Last = (uint64_t) 1 << (len2 - 1);
 
-    myers1999_setup(Peq, map, sb2, 0, sb2->len);
-
-    for (idx = 0; idx < sb1->len; idx++) {
-        Eq = myers1999_geteq(Peq, map, STRBUF_READ(sb1, idx));
+    for (i = 0; i < len1; i++) {
+        Eq = Peq[s1[i]];
 
         Xv = Eq | Mv;
         Xh = (((Eq & Pv) + Pv) ^ Pv) | Eq;
@@ -185,10 +243,8 @@ static Py_ssize_t myers1999_simple(struct strbuf *sb1, struct strbuf *sb2)
         Ph = Mv | ~ (Xh | Pv);
         Mh = Pv & Xh;
 
-        if (Ph & Last)
-            Score += 1;
-        if (Mh & Last)
-            Score -= 1;
+        if (Ph & Last) Score++;
+        if (Mh & Last) Score--;
 
         Ph = (Ph << 1) | 1;
         Mh = (Mh << 1);
@@ -199,156 +255,75 @@ static Py_ssize_t myers1999_simple(struct strbuf *sb1, struct strbuf *sb2)
     return Score;
 }
 
-static Py_ssize_t myers1999_block(struct strbuf *sb1, struct strbuf *sb2, uint64_t b, uint64_t *Phc, uint64_t *Mhc)
-{
-    uint64_t Peq[256];
-    uint64_t map[256];
-    uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv, Last;
-    uint8_t Pb, Mb, vlen;
-
-    Py_ssize_t idx, start, Score;
-
-    start = b * 64;
-    vlen = MIN(64, sb2->len - start);
-
-    Mv = 0;
-    Pv = ~ (uint64_t) 0;
-    Score = sb2->len;
-    Last = (uint64_t) 1 << (vlen - 1);
-
-    myers1999_setup(Peq, map, sb2, start, vlen);
-
-    for (idx = 0; idx < sb1->len; idx++) {
-        Eq = myers1999_geteq(Peq, map, STRBUF_READ(sb1, idx));
-
-        Pb = !!BITMAP_GET(Phc, idx);
-        Mb = !!BITMAP_GET(Mhc, idx);
-
-        Xv = Eq | Mv;
-        Eq |= Mb;
-        Xh = (((Eq & Pv) + Pv) ^ Pv) | Eq;
-
-        Ph = Mv | ~ (Xh | Pv);
-        Mh = Pv & Xh;
-
-        if (Ph & Last) {
-            BITMAP_SET(Phc, idx);
-            Score++;
-        } else {
-            BITMAP_CLR(Phc, idx);
-        }
-        if (Mh & Last) {
-            BITMAP_SET(Mhc, idx);
-            Score--;
-        } else {
-            BITMAP_CLR(Mhc, idx);
-        }
-
-        Ph = (Ph << 1) | Pb;
-        Mh = (Mh << 1) | Mb;
-
-        Pv = Mh | ~ (Xv | Ph);
-        Mv = Ph & Xv;
-    }
-    return Score;
-}
-
-static Py_ssize_t myers1999(struct strbuf *sb1, struct strbuf *sb2)
-{
-    uint64_t i;
-    uint64_t vmax, hmax;
-    uint64_t *Phc, *Mhc;
-    uint64_t res;
-
-    if (sb2->len == 0)
-        return sb1->len;
-
-    if (sb2->len <= 64)
-        return myers1999_simple(sb1, sb2);
-
-    hmax = CEILDIV(sb1->len, 64);
-    vmax = CEILDIV(sb2->len, 64);
-
-    Phc = malloc(hmax * sizeof(uint64_t));
-    Mhc = malloc(hmax * sizeof(uint64_t));
-
-    if (Phc == NULL || Mhc == NULL) {
-        PyErr_NoMemory();
-        return -1;
-    }
-
-    for (i = 0; i < hmax; i++) {
-        Mhc[i] = 0;
-        Phc[i] = ~ (uint64_t) 0;
-    }
-
-    for (i = 0; i < vmax; i++)
-        res = myers1999_block(sb1, sb2, i, Phc, Mhc);
-
-    free(Phc);
-    free(Mhc);
-
-    return res;
-}
-
-
 /*
- * Interface function
+ * Interface functions
  */
+static int64_t levenshtein(PyObject *o1, PyObject *o2, int64_t k)
+{
+    void *p1 = PyUnicode_DATA(o1);
+    void *p2 = PyUnicode_DATA(o2);
+    int kd1 = PyUnicode_KIND(o1);
+    int kd2 = PyUnicode_KIND(o2);
+    int64_t len1 = PyUnicode_GET_LENGTH(o1);
+    int64_t len2 = PyUnicode_GET_LENGTH(o2);
+
+    int64_t ret;
+    struct bit_table *tables;
+
+    if (len1 < len2)
+        return levenshtein(o2, o1, k);
+
+    if (k == 0)
+        return PyUnicode_Compare(o1, o2) ? 1 : 0;
+
+    if (0 < k && k < len1 - len2)
+        return k + 1;
+
+    /* shortcut: levenshtein(s, "") == len(s) */
+    if (len2 == 0)
+        return len1;
+
+    if (0 < k && k < 4) {
+        if (ISASCII(kd1) && ISASCII(kd2)) {
+            return mbleven_ascii(p1, p2, len1, len2, k);
+        } else {
+            return mbleven(p1, p2, len1, len2, kd1, kd2, k);
+        }
+    }
+
+    if (ISASCII(kd1) && ISASCII(kd2) && len2 < 64)
+        return myers1999_ascii(p1, p2, len1, len2);
+
+    /* Resort to myers1999 */
+    tables = create_bit_tables(p2, kd2, len2);
+    if (tables == NULL)
+        return -1;
+
+    ret = myers1999(p1, p2, len1, len2, kd1, kd2, tables);
+    free(tables);
+    return ret;
+}
+
 static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
 {
     PyObject *o1, *o2;
-    struct strbuf sb1, sb2, tmp;
-    Py_ssize_t k = -1;
-    Py_ssize_t res;
+    int64_t k = -1;
+    int64_t ret;
 
     if (!PyArg_ParseTuple(args, "UU|n", &o1, &o2, &k))
         return NULL;
 
-    strbuf_init(o1, &sb1);
-    strbuf_init(o2, &sb2);
-
-    if (sb1.len < sb2.len) {
-        tmp = sb1;
-        sb1 = sb2;
-        sb2 = tmp;
-    }
-
-    if (0 <= k && k < sb1.len - sb2.len)
-        return PyLong_FromSsize_t(k + 1);
-
-    if (k == 0) {
-        res = PyUnicode_Compare(o1, o2) ? 1 : 0;
-    } else if (1 <= k && k <= 3) {
-        if (ISASCII(o1) && ISASCII(o2)) {
-            res = mbleven_ascii(PyUnicode_DATA(o1),
-                                PyUnicode_DATA(o2),
-                                PyUnicode_GET_LENGTH(o1),
-                                PyUnicode_GET_LENGTH(o2),
-                                k);
-        } else {
-            res = mbleven(PyUnicode_DATA(o1),
-                          PyUnicode_DATA(o2),
-                          PyUnicode_GET_LENGTH(o1),
-                          PyUnicode_GET_LENGTH(o2),
-                          PyUnicode_KIND(o1),
-                          PyUnicode_KIND(o2),
-                          k);
-        }
-    } else {
-        res = myers1999(&sb1, &sb2);
-    }
-
-    if (res < 0)
+    ret = levenshtein(o1, o2, k);
+    if (ret < 0)
         return NULL;
-    if (0 < k && k < res)
-        res = k + 1;
+    if (0 < k && k < ret)
+        ret = k + 1;
 
-    return PyLong_FromSsize_t(res);
+    return PyLong_FromLongLong(ret);
 }
 
 /*
- * Define an entry point for importing this module
+ * Implement Python C module API
  */
 static PyMethodDef polyleven_methods[] = {
     {"levenshtein", polyleven_levenshtein, METH_VARARGS,
