@@ -1,39 +1,49 @@
 import unittest
 import os
-import random
-import binascii
-import string
+
 from polyleven import levenshtein
-from itertools import product
 
-class TestEnumeratePatterns(unittest.TestCase):
+def load_data(path):
+    res = []
+    basedir = os.path.dirname(__file__)
+    with open(os.path.join(basedir, 'data', path)) as fp:
+        for line in fp:
+            dist, s1, s2 = line.strip().split(',')
+            res.append((int(dist), s1, s2))
+    return tuple(res)
 
-    def setUp(self):
-        basedir = os.path.dirname(__file__)
-        self.fp = open(os.path.join(basedir, 'data/regress.txt'))
+TEST_ASCII = load_data('regress_ascii.csv')
+TEST_LONG = load_data('regress_long.csv')
+TEST_UNICODE = load_data('regress_unicode.csv')
 
-    def tearDown(self):
-        self.fp.close()
+class TestPattern(unittest.TestCase):
 
-    def parseline(self, line):
-        dist, s1, s2 = line.strip().split('|')
-        return int(dist), s1, s2
-
-    def test_levenshtein(self):
-        for line in self.fp:
-            dist, s1, s2 = self.parseline(line)
-
-            with self.subTest(s1=s1,s2=s2):
+    def test_ascii(self):
+        for (dist, s1, s2) in TEST_ASCII:
+            with self.subTest(s1=s1, s2=s2):
                 self.assertEqual(dist, levenshtein(s1, s2))
 
-    def test_with_upperbound(self):
-        for k in (0, 1, 2, 3, 4, 5):
-            for line in self.fp:
-                dist, s1, s2 = self.parseline(line)
-
-                with self.subTest(k=k,s1=s1,s2=s2):
+    def test_ascii_with_k(self):
+        for k in (0, 1, 2, 3):
+            for (dist, s1, s2) in TEST_ASCII:
+                with self.subTest(k=k, s1=s1, s2=s2):
                     self.assertEqual(min(dist, k+1), levenshtein(s1, s2, k))
 
+    def test_long(self):
+        for (dist, s1, s2) in TEST_LONG:
+            with self.subTest(s1=s1, s2=s2):
+                self.assertEqual(dist, levenshtein(s1, s2))
+
+    def test_unicode(self):
+        for (dist, s1, s2) in TEST_UNICODE:
+            with self.subTest(s1=s1, s2=s2):
+                self.assertEqual(dist, levenshtein(s1, s2))
+
+    def test_unicode_with_k(self):
+        for k in (0, 1, 2, 3):
+            for (dist, s1, s2) in TEST_UNICODE:
+                with self.subTest(k=k, s1=s1, s2=s2):
+                    self.assertEqual(min(dist, k+1), levenshtein(s1, s2, k))
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
