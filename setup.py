@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name='polyleven',
-    version='0.3',
+    version='0.4',
     author='Fujimoto Seiji',
     author_email='fujimoto@ceptord.net',
     license='Public Domain',

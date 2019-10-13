@@ -1,4 +1,3 @@
-VERSION = 0.3
 PYTHON = python3
 INSTALL_OPTS = --user
 
@@ -19,13 +18,9 @@ test:
 sdist: clean
 	$(PYTHON) setup.py sdist
 
-archive:
-	git archive --prefix polyleven-${VERSION}/ ${VERSION} \
-      | gzip -9 > polyleven-$(VERSION).tar.gz
-
 clean:
 	$(PYTHON) setup.py clean
 	rm -r build
 	rm -r dist
 
-.PHONY: all install bench bench-long test sdist clean archive
+.PHONY: all install bench bench-long test sdist clean
