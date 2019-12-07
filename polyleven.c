@@ -1,6 +1,5 @@
 #include <Python.h>
 #include <stdint.h>
-#include <assert.h>
 
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX(a,b) ((a) > (b) ? (a) : (b))
@@ -130,51 +129,70 @@ static int64_t mbleven(PyObject *o1, PyObject *o2, int64_t k)
 }
 
 /*
- * A hash table that maps Unicode characters to bitmap integers.
- *
- * (1 << 31) might seem odd, but it allows us to handle '\0' as a
- * valid character. Since Unicode only uses the lower 21 bits,
- * flagging 31th bit should break nothing.
+ * Data structure to store Peq (equality bit-vector).
  */
-struct bit_table {
-    uint32_t k[128];
-    uint64_t v[128];
+struct blockmap_entry {
+    uint32_t key[128];
+    uint64_t val[128];
 };
 
-static uint64_t bit_table_get(struct bit_table *bt, uint32_t c)
-{
-    uint8_t h = c % 128;
-    uint32_t k = c | ((uint32_t) 1 << 31);
+struct blockmap {
+    int64_t nr;
+    struct blockmap_entry *list;
+};
 
-    while (bt->k[h] && bt->k[h] != k)
-        h++;
-    return bt->k[h] == k ? bt->v[h] : 0;
-}
+#define blockmap_key(c) ((c) | 0x80000000U)
+#define blockmap_hash(c) ((c) % 128)
 
-static void bit_table_set(struct bit_table *bt, uint32_t c, int8_t i)
-{
-    uint8_t h = c % 128;
-    uint32_t k = c | ((uint32_t) 1 << 31);
-
-    while (bt->k[h] && bt->k[h] != k)
-        h++;
-    bt->k[h] = k;
-    bt->v[h] |= (uint64_t) 1 << i;
-}
-
-static struct bit_table *create_bit_tables(void *p, int kd, int64_t len)
+static int blockmap_init(struct blockmap *map, struct strbuf *s)
 {
     int64_t i;
-    struct bit_table *tables;
+    struct blockmap_entry *be;
+    uint32_t c, k;
+    uint8_t h;
 
-    tables = calloc(1, CDIV(len, 64) * sizeof(struct bit_table));
-    if (tables == NULL) {
+    map->nr = CDIV(s->len, 64);
+    map->list = calloc(1,  map->nr * sizeof(struct blockmap_entry));
+    if (map->list == NULL) {
         PyErr_NoMemory();
-        return NULL;
+        return -1;
     }
-    for (i = 0; i < len; i++)
-        bit_table_set(&tables[i / 64], PyUnicode_READ(kd, p, i), i % 64);
-    return tables;
+
+    for (i = 0; i < s->len; i++) {
+        be = &(map->list[i / 64]);
+        c = strbuf_read(s, i);
+        h = blockmap_hash(c);
+        k = blockmap_key(c);
+
+        while (be->key[h] && be->key[h] != k)
+            h++;
+        be->key[h] = k;
+        be->val[h] |= (uint64_t) 1 << (i % 64);
+    }
+    return 0;
+}
+
+static void blockmap_clear(struct blockmap *map)
+{
+    if (map->list)
+        free(map->list);
+    map->list = NULL;
+    map->nr = 0;
+}
+
+static uint64_t blockmap_get(struct blockmap *map, int block, uint32_t c)
+{
+    struct blockmap_entry *be;
+    uint8_t h;
+    uint32_t k;
+
+    h = blockmap_hash(c);
+    k = blockmap_key(c);
+
+    be = &(map->list[block]);
+    while (be->key[h] && be->key[h] != k)
+        h++;
+    return be->key[h] == k ? be->val[h] : 0;
 }
 
 /*
@@ -183,20 +201,17 @@ static struct bit_table *create_bit_tables(void *p, int kd, int64_t len)
  * See: G. Myers. "A fast bit-vector algorithm for approximate string
  *      matching based on dynamic programming." Journal of the ACM, 1999.
  */
-static int64_t myers1999(void *p1, void *p2, int64_t len1, int64_t len2,
-                         int kd1, int kd2, struct bit_table *tables)
+static int64_t myers1999_block(struct strbuf *s1, struct strbuf *s2,
+                               struct blockmap *map)
 {
     uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv;
     uint64_t *Mhc, *Phc;
-    int64_t i, b, hsize, vsize;
-    int64_t Score = len2;
+    int64_t i, b, hsize, vsize, Score;
     uint8_t Pb, Mb;
 
-    assert(len1 > len2);
-    assert(len2 > 0);
-
-    hsize = CDIV(len1, 64);
-    vsize = CDIV(len2, 64);
+    hsize = CDIV(s1->len, 64);
+    vsize = CDIV(s2->len, 64);
+    Score = s2->len;
 
     Phc = malloc(hsize * 2 * sizeof(uint64_t));
     if (Phc == NULL) {
@@ -210,10 +225,10 @@ static int64_t myers1999(void *p1, void *p2, int64_t len1, int64_t len2,
     for (b = 0; b < vsize; b++) {
         Mv = 0;
         Pv = (uint64_t) -1;
-        Score = len2;
+        Score = s2->len;
 
-        for (i = 0; i < len1; i++) {
-            Eq = bit_table_get(&tables[b], PyUnicode_READ(kd1, p1, i));
+        for (i = 0; i < s1->len; i++) {
+            Eq = blockmap_get(map, b, strbuf_read(s1, i));
 
             Pb = BIT(Phc[i / 64], i % 64);
             Mb = BIT(Mhc[i / 64], i % 64);
@@ -224,8 +239,8 @@ static int64_t myers1999(void *p1, void *p2, int64_t len1, int64_t len2,
             Ph = Mv | ~ (Xh | Pv);
             Mh = Pv & Xh;
 
-            Score += BIT(Ph, len2 % 64 - 1);
-            Score -= BIT(Mh, len2 % 64 - 1);
+            Score += BIT(Ph, s2->len % 64 - 1);
+            Score -= BIT(Mh, s2->len % 64 - 1);
 
             if ((Ph >> 63) ^ Pb)
                 Phc[i / 64] = FLIP(Phc[i / 64], i % 64);
@@ -244,14 +259,12 @@ static int64_t myers1999(void *p1, void *p2, int64_t len1, int64_t len2,
     return Score;
 }
 
-static int64_t myers1999_ascii(uint8_t *s1, uint8_t *s2, int64_t len1, int64_t len2)
+static int64_t myers1999_simple(uint8_t *s1, int64_t len1, uint8_t *s2, int64_t len2)
 {
     uint64_t Peq[256];
     uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv, Last;
     int64_t i;
     int64_t Score = len2;
-
-    assert(len1 < len2);
 
     memset(Peq, 0, sizeof(Peq));
 
@@ -283,20 +296,38 @@ static int64_t myers1999_ascii(uint8_t *s1, uint8_t *s2, int64_t len1, int64_t l
     return Score;
 }
 
+static int64_t myers1999(PyObject *o1, PyObject *o2)
+{
+    struct strbuf s1, s2;
+    struct blockmap map;
+    int64_t ret;
+
+    strbuf_init(&s1, o1);
+    strbuf_init(&s2, o2);
+
+    if (s1.len < s2.len)
+        return myers1999(o2, o1);
+
+    if (ISASCII(s1.kind) && ISASCII(s2.kind) && s2.len < 65)
+        return myers1999_simple(s1.ptr, s1.len, s2.ptr, s2.len);
+
+    if (blockmap_init(&map, &s2))
+        return -1;
+
+    ret = myers1999_block(&s1, &s2, &map);
+    blockmap_clear(&map);
+    return ret;
+}
+
 /*
  * Interface functions
  */
 static int64_t levenshtein(PyObject *o1, PyObject *o2, int64_t k)
 {
-    void *p1 = PyUnicode_DATA(o1);
-    void *p2 = PyUnicode_DATA(o2);
-    int kd1 = PyUnicode_KIND(o1);
-    int kd2 = PyUnicode_KIND(o2);
-    int64_t len1 = PyUnicode_GET_LENGTH(o1);
-    int64_t len2 = PyUnicode_GET_LENGTH(o2);
+    int64_t len1, len2;
 
-    int64_t ret;
-    struct bit_table *tables;
+    len1 = PyUnicode_GET_LENGTH(o1);
+    len2 = PyUnicode_GET_LENGTH(o2);
 
     if (len1 < len2)
         return levenshtein(o2, o1, k);
@@ -307,24 +338,13 @@ static int64_t levenshtein(PyObject *o1, PyObject *o2, int64_t k)
     if (0 < k && k < len1 - len2)
         return k + 1;
 
-    /* shortcut: levenshtein(s, "") == len(s) */
     if (len2 == 0)
         return len1;
 
     if (0 < k && k < 4)
-        return mbleven(p1, p2, len1, len2, kd1, kd2, k);
+        return mbleven(o1, o2, k);
 
-    if (ISASCII(kd1) && ISASCII(kd2) && len2 < 64)
-        return myers1999_ascii(p1, p2, len1, len2);
-
-    /* Resort to myers1999 */
-    tables = create_bit_tables(p2, kd2, len2);
-    if (tables == NULL)
-        return -1;
-
-    ret = myers1999(p1, p2, len1, len2, kd1, kd2, tables);
-    free(tables);
-    return ret;
+    return myers1999(o1, o2);
 }
 
 static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
