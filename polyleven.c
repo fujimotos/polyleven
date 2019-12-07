@@ -10,6 +10,24 @@
 #define ISASCII(kd) ((kd) == PyUnicode_1BYTE_KIND)
 
 /*
+ * Bare bone of PyUnicode
+ */
+struct strbuf {
+    void *ptr;
+    int kind;
+    int64_t len;
+};
+
+static void strbuf_init(struct strbuf *s, PyObject *o)
+{
+    s->ptr = PyUnicode_DATA(o);
+    s->kind = PyUnicode_KIND(o);
+    s->len = PyUnicode_GET_LENGTH(o);
+}
+
+#define strbuf_read(s, i) PyUnicode_READ((s)->kind, (s)->ptr, (i))
+
+/*
  * An encoded mbleven model table.
  *
  * Each 8-bit integer represents an edit sequence, with using two
@@ -34,14 +52,12 @@ static const uint8_t MBLEVEN_MATRIX[] = {
 
 #define MBLEVEN_MATRIX_GET(k, d) ((((k) + (k) * (k)) / 2 - 1) + (d)) * 8
 
-static int64_t mbleven_ascii(uint8_t *s1, uint8_t *s2, int64_t len1, int64_t len2, int k)
+static int64_t mbleven_ascii(char *s1, int64_t len1,
+                             char *s2, int64_t len2, int k)
 {
     int pos;
     uint8_t m;
     int64_t i, j, c, r;
-
-    assert(len1 > len2);
-    assert(0 < k && k <= 3);
 
     pos = MBLEVEN_MATRIX_GET(k, len1 - len2);
     r = k + 1;
@@ -67,24 +83,36 @@ static int64_t mbleven_ascii(uint8_t *s1, uint8_t *s2, int64_t len1, int64_t len
     return r;
 }
 
-static int64_t mbleven(void *p1, void *p2, int64_t len1, int64_t len2,
-                       int kd1, int kd2, int64_t k)
+static int64_t mbleven(PyObject *o1, PyObject *o2, int64_t k)
 {
     int pos;
     uint8_t m;
     int64_t i, j, c, r;
+    struct strbuf s1, s2;
 
-    assert(len1 > len2);
-    assert(0 < k && k <= 3);
+    strbuf_init(&s1, o1);
+    strbuf_init(&s2, o2);
 
-    pos = MBLEVEN_MATRIX_GET(k, len1 - len2);
+    if (s1.len < s2.len)
+        return mbleven(o2, o1, k);
+
+    if (k > 3)
+        return -1;
+
+    if (k < s1.len - s2.len)
+        return k + 1;
+
+    if (ISASCII(s1.kind) && ISASCII(s2.kind))
+        return mbleven_ascii(s1.ptr, s1.len, s2.ptr, s2.len, k);
+
+    pos = MBLEVEN_MATRIX_GET(k, s1.len - s2.len);
     r = k + 1;
 
     while (MBLEVEN_MATRIX[pos]) {
         m = MBLEVEN_MATRIX[pos++];
         i = j = c = 0;
-        while (i < len1 && j < len2) {
-            if (PyUnicode_READ(kd1, p1, i) != PyUnicode_READ(kd2, p2, j)) {
+        while (i < s1.len && j < s2.len) {
+            if (strbuf_read(&s1, i) != strbuf_read(&s2, j)) {
                 c++;
                 if (!m) break;
                 if (m & 1) i++;
@@ -95,7 +123,7 @@ static int64_t mbleven(void *p1, void *p2, int64_t len1, int64_t len2,
                 j++;
             }
         }
-        c += (len1 - i) + (len2 - j);
+        c += (s1.len - i) + (s2.len - j);
         r = MIN(r, c);
     }
     return r;
@@ -283,13 +311,8 @@ static int64_t levenshtein(PyObject *o1, PyObject *o2, int64_t k)
     if (len2 == 0)
         return len1;
 
-    if (0 < k && k < 4) {
-        if (ISASCII(kd1) && ISASCII(kd2)) {
-            return mbleven_ascii(p1, p2, len1, len2, k);
-        } else {
-            return mbleven(p1, p2, len1, len2, kd1, kd2, k);
-        }
-    }
+    if (0 < k && k < 4)
+        return mbleven(p1, p2, len1, len2, kd1, kd2, k);
 
     if (ISASCII(kd1) && ISASCII(kd2) && len2 < 64)
         return myers1999_ascii(p1, p2, len1, len2);
