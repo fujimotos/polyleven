@@ -20,7 +20,8 @@ sdist: clean
 
 clean:
 	$(PYTHON) setup.py clean
-	rm -r build
-	rm -r dist
+	rm -rf build
+	rm -rf dist
+	rm -rf polyleven.egg-info
 
 .PHONY: all install bench bench-long test sdist clean

@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name='polyleven',
-    version='0.4',
+    version='0.5',
     author='Fujimoto Seiji',
     author_email='fujimoto@ceptord.net',
     license='Public Domain',
@@ -12,7 +12,7 @@ Polyleven is a C-implemented Python library that can compute Levenshtein
 distance between two strings. The focus of this library is efficiently.
 To archive this goal, polyleven combines a number of special case algorithms
 under the hood.""",
-    url='https://github.com/fujimotos/polyleven',
+    url='http://ceptord.net/20181215-polyleven.html',
     ext_modules=[
         setuptools.Extension('polyleven', sources=['polyleven.c'])
     ],
