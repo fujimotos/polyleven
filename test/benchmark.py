@@ -33,7 +33,7 @@ def load_word():
     basedir = os.path.dirname(sys.argv[0])
     path = os.path.join(basedir, WORD_TXT)
 
-    with open(path) as fp:
+    with open(path, encoding="utf-8") as fp:
         return [x.strip() for x in fp]
 
 def load_func(target):
