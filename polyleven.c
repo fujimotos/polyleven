@@ -371,6 +371,7 @@ static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
 static PyMethodDef polyleven_methods[] = {
     {"levenshtein", polyleven_levenshtein, METH_VARARGS,
      "Compute the levenshtein distance between two strings"},
+    {NULL, NULL, 0, NULL}
 };
 
 static struct PyModuleDef polyleven_definition = {
