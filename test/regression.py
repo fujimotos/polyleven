@@ -6,7 +6,7 @@ from polyleven import levenshtein
 def load_data(path):
     res = []
     basedir = os.path.dirname(__file__)
-    with open(os.path.join(basedir, 'data', path)) as fp:
+    with open(os.path.join(basedir, 'data', path), encoding='utf-8') as fp:
         for line in fp:
             dist, s1, s2 = line.strip().split(',')
             res.append((int(dist), s1, s2))

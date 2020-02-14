@@ -239,8 +239,8 @@ static int64_t myers1999_block(struct strbuf *s1, struct strbuf *s2,
             Ph = Mv | ~ (Xh | Pv);
             Mh = Pv & Xh;
 
-            Score += BIT(Ph, s2->len % 64 - 1);
-            Score -= BIT(Mh, s2->len % 64 - 1);
+            Score += BIT(Ph, (s2->len - 1) % 64);
+            Score -= BIT(Mh, (s2->len - 1) % 64);
 
             if ((Ph >> 63) ^ Pb)
                 Phc[i / 64] = FLIP(Phc[i / 64], i % 64);
@@ -350,10 +350,10 @@ static int64_t levenshtein(PyObject *o1, PyObject *o2, int64_t k)
 static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
 {
     PyObject *o1, *o2;
-    int64_t k = -1;
+    int k = -1;
     int64_t ret;
 
-    if (!PyArg_ParseTuple(args, "UU|n", &o1, &o2, &k))
+    if (!PyArg_ParseTuple(args, "UU|i", &o1, &o2, &k))
         return NULL;
 
     ret = levenshtein(o1, o2, k);
@@ -371,6 +371,7 @@ static PyObject* polyleven_levenshtein(PyObject *self, PyObject *args)
 static PyMethodDef polyleven_methods[] = {
     {"levenshtein", polyleven_levenshtein, METH_VARARGS,
      "Compute the levenshtein distance between two strings"},
+    {NULL, NULL, 0, NULL}
 };
 
 static struct PyModuleDef polyleven_definition = {
