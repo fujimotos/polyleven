@@ -1,21 +1,25 @@
 import setuptools
 
+with open('README.md') as fp:
+    README = fp.read()
+
 setuptools.setup(
     name='polyleven',
-    version='0.5',
+    version='0.6',
     author='Fujimoto Seiji',
     author_email='fujimoto@ceptord.net',
     license='Public Domain',
     description='A fast C-implemented library for Levenshtein distance',
-    long_description="""\
-Polyleven is a C-implemented Python library that can compute Levenshtein
-distance between two strings. The focus of this library is efficiently.
-To archive this goal, polyleven combines a number of special case algorithms
-under the hood.""",
+    long_description=README,
+    long_description_content_type='text/markdown',
     url='http://ceptord.net/20181215-polyleven.html',
     ext_modules=[
         setuptools.Extension('polyleven', sources=['polyleven.c'])
     ],
+    project_urls={
+        'Documentation': 'http://ceptord.net/20181215-polyleven.html',
+        'GitHub Mirror': 'https://github.com/fujimotos/polyleven'
+    },
     zip_safe=False,
     python_requires='>=3.4',
     keywords=['Levenshtein distance'],
