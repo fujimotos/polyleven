@@ -165,7 +165,7 @@ static int blockmap_init(struct blockmap *map, struct strbuf *s)
         k = blockmap_key(c);
 
         while (be->key[h] && be->key[h] != k)
-            h++;
+            h = blockmap_hash(h + 1);
         be->key[h] = k;
         be->val[h] |= (uint64_t) 1 << (i % 64);
     }
@@ -191,7 +191,7 @@ static uint64_t blockmap_get(struct blockmap *map, int block, uint32_t c)
 
     be = &(map->list[block]);
     while (be->key[h] && be->key[h] != k)
-        h++;
+        h = blockmap_hash(h + 1);
     return be->key[h] == k ? be->val[h] : 0;
 }
 

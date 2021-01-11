@@ -45,5 +45,9 @@ class TestPattern(unittest.TestCase):
                 with self.subTest(k=k, s1=s1, s2=s2):
                     self.assertEqual(min(dist, k+1), levenshtein(s1, s2, k))
 
+    def test_special(self):
+        s = (chr(127) + chr(255)) * 33
+        self.assertEqual(0, levenshtein(s, s))
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)
