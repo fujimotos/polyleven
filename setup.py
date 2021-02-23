@@ -5,10 +5,10 @@ with open('README.md') as fp:
 
 setuptools.setup(
     name='polyleven',
-    version='0.6',
+    version='0.7',
     author='Fujimoto Seiji',
     author_email='fujimoto@ceptord.net',
-    license='Public Domain',
+    license='MIT License',
     description='A fast C-implemented library for Levenshtein distance',
     long_description=README,
     long_description_content_type='text/markdown',
@@ -28,6 +28,6 @@ setuptools.setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3',
         'Programming Language :: C',
-        'License :: Public Domain',
+        'License :: OSI Approved :: MIT License'
     ]
 )
