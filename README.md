@@ -1,37 +1,35 @@
 Polyleven
 =========
 
-Polyleven is a hyper fast Levenshtein distance library for Python.
+Polyleven is a fast Levenshtein distance library for Python.
 
 Project page: http://ceptord.net/20181215-polyleven.html
 
 Install
 -------
 
-Just run setup.py.
-
-    $ python3 setup.py install
-
-PyPI package is available too.
-
     $ pip install polyleven
 
 Usage
 -----
 
-Use `levenshtein()` to compute Levenshtein distance.
+Polyleven provides a single interface function "levenshtein()". You
+can use this function to measure the similarity of two strings.
 
     >>> from polyleven import levenshtein
-    >>> levenshtein('abcde', 'abcd')
-    1
-
-You can pass an integer to the third argument, which limits the maximum
-distance to compute. This makes the computation a lot more efficient.
-
-    >>> dist = levenshtein('abcde', 'abc', 2)
-    2
-    >>> dist = levenshtein('abcde', 'xxxxx', 2)
+    >>> levenshtein('aaa', 'ccc')
     3
+
+If you only care about distances under a certain threshold, you can
+pass the max threshold to the third argument.
+
+    >>> levenshtein('acc', 'ccc', 1)
+    1
+    >>> levenshtein('aaa', 'ccc', 1)
+    2
+
+In general, you can gain a noticeable speed boost with threshold
+k < 3.
 
 Source code
 -----------
@@ -45,4 +43,5 @@ Send bug reports to fujimoto@ceptord.net.
 License
 -------
 
-Public Domain
+From v0.7, polyleven is released under MIT License. See LICENSE for
+the full license text.
