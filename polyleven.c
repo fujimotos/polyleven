@@ -204,7 +204,7 @@ static uint64_t blockmap_get(struct blockmap *map, int block, uint32_t c)
 static int64_t myers1999_block(struct strbuf *s1, struct strbuf *s2,
                                struct blockmap *map)
 {
-    uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv;
+    uint64_t Eq, Xv, Xh, Ph, Mh, Pv, Mv, Last;
     uint64_t *Mhc, *Phc;
     int64_t i, b, hsize, vsize, Score;
     uint8_t Pb, Mb;
@@ -221,6 +221,7 @@ static int64_t myers1999_block(struct strbuf *s1, struct strbuf *s2,
     Mhc = Phc + hsize;
     memset(Phc, -1, hsize * sizeof(uint64_t));
     memset(Mhc, 0, hsize * sizeof(uint64_t));
+    Last = (uint64_t)1 << ((s2->len - 1) % 64);
 
     for (b = 0; b < vsize; b++) {
         Mv = 0;
@@ -239,8 +240,8 @@ static int64_t myers1999_block(struct strbuf *s1, struct strbuf *s2,
             Ph = Mv | ~ (Xh | Pv);
             Mh = Pv & Xh;
 
-            Score += BIT(Ph, (s2->len - 1) % 64);
-            Score -= BIT(Mh, (s2->len - 1) % 64);
+            if (Ph & Last) Score++;
+            if (Mh & Last) Score--;
 
             if ((Ph >> 63) ^ Pb)
                 Phc[i / 64] = FLIP(Phc[i / 64], i % 64);
