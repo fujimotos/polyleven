@@ -3,7 +3,7 @@ Polyleven
 
 Polyleven is a fast Levenshtein distance library for Python.
 
-Project page: http://ceptord.net/20181215-polyleven.html
+Project page: https://ceptord.net/20181215-polyleven.html
 
 Install
 -------
@@ -34,7 +34,7 @@ k < 3.
 Source code
 -----------
 
-    git clone http://ceptord.net/cgit/polyleven/
+    git clone https://git.ceptord.net/polyleven/
 
 GitHub Mirror: https://github.com/fujimotos/polyleven
 
