@@ -60,13 +60,19 @@ int64_t myers1999(uint8_t *s1, int64_t len1, uint8_t *s2, int64_t len2)
     vsize = CDIV(len2, 64);
     Score = len2;
 
+    if (len2 == 0) {
+        return len1;
+    }
+
     map = create_map(s2, len2);
     if (map == NULL)
         return -1;
 
     Phc = malloc(hsize * 2 * sizeof(uint64_t));
-    if (Phc == NULL)
+    if (Phc == NULL) {
+        free(map);
         return -1;
+    }
 
     Mhc = Phc + hsize;
     memset(Phc, -1, hsize * sizeof(uint64_t));
@@ -112,13 +118,16 @@ int64_t myers1999(uint8_t *s1, int64_t len1, uint8_t *s2, int64_t len2)
     return Score;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, const char **argv) {
     if (argc < 3) {
         printf("usage: myers1999 str1 str2\n");
         return -1;
     }
-    uint8_t *s1 = argv[1];
-    uint8_t *s2 = argv[2];
-    printf("%li\n", myers1999(s1, strlen(s1), s2, strlen(s2)));
+    uint8_t *s1 = (uint8_t *) argv[1];
+    uint8_t *s2 = (uint8_t *) argv[2];
+    int64_t len1 = strlen(argv[1]);
+    int64_t len2 = strlen(argv[2]);
+
+    printf("%li\n", myers1999(s1, len1, s2, len2));
     return 0;
 }
