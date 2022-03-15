@@ -78,6 +78,9 @@ static int64_t mbleven_ascii(char *s1, int64_t len1,
         }
         c += (len1 - i) + (len2 - j);
         r = MIN(r, c);
+        if (r < 2) {
+            return r;
+        }
     }
     return r;
 }
@@ -124,6 +127,9 @@ static int64_t mbleven(PyObject *o1, PyObject *o2, int64_t k)
         }
         c += (s1.len - i) + (s2.len - j);
         r = MIN(r, c);
+        if (r < 2) {
+            return r;
+        }
     }
     return r;
 }
