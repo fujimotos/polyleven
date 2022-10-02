@@ -5,7 +5,7 @@ with open('README.rst') as fp:
 
 setuptools.setup(
     name='polyleven',
-    version='0.7',
+    version='0.8',
     author='Fujimoto Seiji',
     author_email='fujimoto@ceptord.net',
     license='MIT License',

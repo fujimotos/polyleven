@@ -3,7 +3,7 @@ Polyleven -- Fast Pythonic Levenshtein Library
 ==============================================
 
 :Website: https://ceptord.net/
-:Latest Release: v0.7 (2021-02-23)
+:Latest Release: v0.8 (2022-10-02)
 :License: MIT License
 
 1. Introduction
