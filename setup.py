@@ -11,20 +11,20 @@ setuptools.setup(
     license='MIT License',
     description='A fast C-implemented library for Levenshtein distance',
     long_description=README,
-    long_description_content_type='text/markdown',
-    url='http://ceptord.net/20181215-polyleven.html',
+    long_description_content_type='text/x-rst',
+    url='https://ceptord.net/',
     ext_modules=[
         setuptools.Extension('polyleven', sources=['polyleven.c'])
     ],
     project_urls={
-        'Documentation': 'http://ceptord.net/20181215-polyleven.html',
+        'Documentation': 'https://ceptord.net/',
         'GitHub Mirror': 'https://github.com/fujimotos/polyleven'
     },
     zip_safe=False,
     python_requires='>=3.4',
     keywords=['Levenshtein distance'],
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3',
         'Programming Language :: C',
