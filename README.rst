@@ -2,8 +2,6 @@
 Polyleven -- Fast Pythonic Levenshtein Library
 ==============================================
 
-:Website: https://ceptord.net/
-:Latest Release: v0.8 (2022-10-02)
 :License: MIT License
 
 1. Introduction
@@ -15,10 +13,11 @@ polyleven is a Pythonic Levenshtein distance library that:
   both short (like English words) and long input types (like DNA
   sequences).
 
+- Is *stand-alone* depending only on core Python packages (such as
+  ``setuptools`` for installation).
+
 - Can be used readily in a manner not covered by restrictive
   licenses such as GPL, hence can be used freely in private codes.
-
-- Supports Python 3.x.
 
 2. How to install
 =================
