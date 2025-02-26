@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "polyleven"
+version = "0.8.0"
+dependencies = []
+maintainers = [
+  {name = "Fujimoto Seiji", email = "fujimoto@ceptord.net"}
+]
+description = "A fast C-implemented library for Levenshtein distance"
+readme = "README.rst"
+keywords = [
+    "Levenshtein distance"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C",
+]
+
+[project.urls]
+github = "https://github.com/fujimotos/polyleven"
