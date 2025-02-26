@@ -32,8 +32,10 @@ name: Publish Python packages to PyPI
 on:
   push:
     branches:
-      - main
+      - master
       - next
+    tags:
+      - 0.*
 
 jobs:
   build-sdist:
