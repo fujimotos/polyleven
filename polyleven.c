@@ -381,15 +381,26 @@ static PyMethodDef polyleven_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
+static PyModuleDef_Slot polyleven_slots[] = {
+#if PY_VERSION_HEX >= 0x030D0000
+    {Py_mod_gil, Py_MOD_GIL_NOT_USED},
+#endif
+    {0, NULL}
+};
+
 static struct PyModuleDef polyleven_definition = {
     PyModuleDef_HEAD_INIT,
     "polyleven",
     "Hyperfast Levenshtein distance library",
-    -1,
-    polyleven_methods
+    0,  /* m_size: 0 for multi-phase init (no per-module state) */
+    polyleven_methods,
+    polyleven_slots,
+    NULL,  /* m_traverse */
+    NULL,  /* m_clear */
+    NULL   /* m_free */
 };
 
 PyMODINIT_FUNC PyInit_polyleven(void)
 {
-    return PyModule_Create(&polyleven_definition);
+    return PyModuleDef_Init(&polyleven_definition);
 }
